@@ -91,6 +91,29 @@ section { margin-top: 16px; }
 .bar i { display: block; height: 100%; border-radius: 3px; }
 .wide { width: 100%; margin-top: 12px; min-height: 48px; border-radius: 14px; font-weight: 600; background: var(--surface); box-shadow: var(--shadow); }
 .wide .dot { display: inline-block; margin-right: 8px; }
+.logbtn small { display: block; font-weight: 500; font-size: 12px; opacity: .92; margin-top: 2px; }
+.wide2 { width: 100%; margin-top: 8px; min-height: 44px; }
+.quick3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.quick3 .logbtn { margin-top: 14px; padding: 0 4px; }
+.tip-line { margin-top: 12px; font-size: 14px; color: var(--ink-2); }
+details.more { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+details.more summary, details.addnote summary { cursor: pointer; font-size: 14px; color: var(--ink-2); padding: 6px 0; }
+details.more .tips { padding-top: 6px; }
+.ctx { border-radius: 10px; padding: 7px 10px; font-size: 13px; margin-top: 8px; background: var(--chip); color: var(--ink); border-left: 4px solid var(--diaper); }
+.ctx.watch { background: var(--warn-bg); color: var(--warn); border-left-color: var(--warn); }
+.ctx.call { background: var(--crit-bg); color: var(--crit); border-left-color: var(--crit); font-weight: 600; }
+.step { display: grid; grid-template-columns: 52px 1fr 52px; gap: 8px; }
+.step .btn { min-height: 48px; font-size: 22px; padding: 0; }
+.step input { text-align: center; font-size: 20px; min-height: 48px; width: 100%; }
+.sizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sizes .btn { min-height: 66px; line-height: 1.25; padding: 6px; }
+.sizes small { display: block; color: var(--ink-2); font-size: 12px; }
+.ferr { color: var(--crit); font-size: 14px; margin: 0; }
+.toast { display: flex; align-items: center; gap: 14px; width: max-content; max-width: calc(100vw - 32px); }
+.toast[hidden] { display: none; }
+.toast button { border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; padding: 4px; font-size: 14px; }
+.actions { position: sticky; bottom: -18px; background: var(--surface); padding: 10px 0 2px; }
+
 .logbtn { width: 100%; margin-top: 14px; min-height: 50px; border: 0; border-radius: 14px; font-weight: 650; color: var(--on-btn); }
 .logbtn.feed-c { background: var(--btn-feed); } .logbtn.diaper-c { background: var(--btn-diaper); }
 .logbtn:active { filter: brightness(0.9); }
@@ -187,7 +210,8 @@ dialog h2 { font-size: 20px; }
     <div class="card tracker" id="feedCard"></div>
     <div class="card tracker" id="diaperCard"></div>
   </div>
-  <button class="btn wide" data-log="note" type="button"><i class="dot note-c"></i>Log spit-up or note</button>
+  <button class="btn wide" data-log="note" type="button"><i class="dot note-c"></i>Spit-up or note</button>
+  <div class="callout tips" id="now" style="margin-top:12px"></div>
 
   <section>
     <div class="sec-title">Last 24 hours</div>
@@ -233,13 +257,11 @@ dialog h2 { font-size: 20px; }
   </section>
 
   <section>
-    <div class="sec-title">Newborn guide</div>
-    <div class="card tips">
-      <div class="callout" id="now"></div>
-      <div class="tabs" role="tablist" id="tabs"></div>
-      <div id="tipBody"></div>
+    <details class="card more-all">
+      <summary style="cursor:pointer;font-weight:600">Sleep, safe sleep &amp; when to call the pediatrician</summary>
+      <div class="tips" id="moreGuide" style="margin-top:12px"></div>
       <p class="fine">General guidance in line with AAP, CDC and NHS newborn advice. It's a reference, not medical advice. Your pediatrician and lactation consultant know her best.</p>
-    </div>
+    </details>
   </section>
 </main>
 
@@ -410,14 +432,34 @@ function buildSlots() {
 const wetGoal = d => d >= 5 ? 6 : d;
 const dirtyGoal = d => d <= 2 ? 1 : d === 3 ? 2 : 3;
 
+const COLOR_INFO = {
+  black: d => d <= 4 ? ['ok', 'Black and tarry is meconium: normal for the first few days. It should lighten by day 4–5.'] : ['call', 'Black stool after the first few days: call the pediatrician.'],
+  darkgreen: () => ['ok', 'Dark green-brown transitional stool is normal as her milk comes in (days 3–5).'],
+  green: () => ['ok', 'Green is usually normal, especially in the first week. Mention it if it is frothy and very frequent.'],
+  yellow: () => ['ok', 'Mustard yellow and seedy is the classic breastfed stool: a good sign she is getting milk.'],
+  tan: () => ['ok', 'Tan to yellow-brown and pasty is typical for formula-fed babies.'],
+  brown: () => ['ok', 'Brown is normal, especially with formula.'],
+  red: () => ['call', 'Red or bloody stool: call the pediatrician today.'],
+  white: () => ['call', 'White or pale gray stool can signal a bile-flow problem: call the pediatrician today.'],
+};
+const CONS_INFO = {
+  seedy: ['ok', 'Soft and seedy is typical for breast milk.'],
+  pasty: ['ok', 'Pasty, like peanut butter, is typical for formula.'],
+  loose: ['ok', 'Loose is normal for a breastfed baby. Call if it turns watery and frequent.'],
+  formed: ['ok', 'Soft formed is fine. If it firms up further, watch for constipation.'],
+  watery: ['watch', 'Very watery stools: watch the wet-diaper count for dehydration and call if it keeps happening.'],
+  pellets: ['watch', 'Hard pellet-like stools suggest constipation. Mention it to the pediatrician if it continues.'],
+};
+function stoolInfo(color, cons, d) {
+  const out = [];
+  if (COLOR_INFO[color]) { const [level, text] = COLOR_INFO[color](d); out.push({ level, text }); }
+  if (CONS_INFO[cons]) { const [level, text] = CONS_INFO[cons]; out.push({ level, text }); }
+  return out;
+}
 function stoolFlag(e) {
   if (!(e.kind === 'dirty' || e.kind === 'both')) return null;
-  if (e.color === 'red') return { level: 'call', msg: 'Red or bloody stool: call the pediatrician today.' };
-  if (e.color === 'white') return { level: 'call', msg: 'White or pale gray stool can signal a bile-flow problem: call the pediatrician today.' };
-  if (e.color === 'black' && dayOfLife(e.t) >= 5) return { level: 'call', msg: 'Black stool after the first few days: call the pediatrician.' };
-  if (e.cons === 'pellets') return { level: 'watch', msg: 'Hard pellet-like stools suggest constipation. Mention it to the pediatrician if it continues.' };
-  if (e.cons === 'watery') return { level: 'watch', msg: 'Very watery stools: watch wet-diaper count for dehydration and call if it keeps happening.' };
-  return null;
+  const bad = stoolInfo(e.color, e.cons, dayOfLife(e.t)).filter(i => i.level !== 'ok').sort((a, b) => (a.level === 'call' ? 0 : 1) - (b.level === 'call' ? 0 : 1))[0];
+  return bad ? { level: bad.level, msg: bad.text } : null;
 }
 const colorName = k => (COLORS.find(c => c[0] === k) || [])[1];
 const colorHex = k => (COLORS.find(c => c[0] === k) || [])[2];
@@ -459,6 +501,7 @@ function render() {
   renderLog();
   $('#feedInt').value = String(state.settings.feedInterval ?? 'auto');
   renderNow(d);
+  $('#moreGuide').innerHTML = TIPS.rhythm + TIPS.call;
   renderCal();
 }
 
@@ -469,7 +512,7 @@ function renderAlerts(now) {
     `<div class="alert ${f.level}" role="alert"><span>${f.level === 'call' ? '⚠️' : '👀'}</span><span><b>${f.level === 'call' ? 'Call the pediatrician' : 'Keep an eye on this'}</b> · ${fmtWhen(l.t)}<br>${esc(f.msg)}</span></div>`).join('');
 }
 
-function heroCard(el, cls, title, list, iv, emoji) {
+function heroCard(el, cls, title, list, iv, actions, tip, more) {
   const now = Date.now(), p = projection(list, iv, 1), last = list[list.length - 1];
   let html = `<div class="head"><i class="dot ${cls}"></i>${title}</div>`;
   if (!last) {
@@ -482,20 +525,46 @@ function heroCard(el, cls, title, list, iv, emoji) {
       <div class="next"><div><div class="lbl">Next ≈</div><div class="val">${fmtT(due ? p.raw : p.times[0])}</div></div>
       <div class="rel ${due ? 'due' : ''}">${due ? (now - p.raw < 5 * M ? 'due now' : `overdue ${dur(now - p.raw)}`) : `in ${dur(p.raw - now)}`}<br>every ~${dur(iv)}</div></div>`;
   }
-  html += `<button class="logbtn ${cls}" data-log="${el === '#feedCard' ? 'feed' : 'diaper'}">${emoji} Log ${el === '#feedCard' ? 'feeding' : 'diaper change'}</button>`;
-  $(el).innerHTML = html;
+  $(el).innerHTML = html + actions + `<p class="tip-line">💡 ${tip}</p><details class="more"><summary>${more[0]}</summary><div class="tips">${more[1]}</div></details>`;
+}
+
+// What a one-tap "same as last" feed would record: same milk, opposite breast side.
+function repeatEntry(last) {
+  if (!last || LEGACY_FEED[last.kind]) return null;
+  const e = { type: 'feed', kind: last.kind };
+  if (last.sides) e.sides = last.sides.length === 1 ? (last.sides === 'L' ? 'R' : 'L') : last.sides;
+  if (last.fMl) e.fMl = last.fMl;
+  if (last.pMl) e.pMl = last.pMl;
+  if (e.fMl || e.pMl) e.amt = (e.fMl || 0) + (e.pMl || 0);
+  return e;
+}
+function counts24(now) {
+  const recent = state.logs.filter(l => now - l.t < 24 * H), dia = recent.filter(l => l.type === 'diaper');
+  return { feeds: recent.filter(l => l.type === 'feed').length, wet: dia.filter(l => l.kind === 'wet' || l.kind === 'both').length, dirty: dia.filter(l => l.kind === 'dirty' || l.kind === 'both').length };
+}
+function feedTiming() {
+  const last = byType('feed').pop(); if (!last) return null;
+  const since = Date.now() - last.t;
+  if (since < 90 * M) return `Only ${dur(since)} since the last feed. Back-to-back (cluster) feeding is normal, especially in the evening.`;
+  if (since > 3 * H) return `It has been ${dur(since)}. Newborns shouldn't go more than 3 hours between feeds: wake her gently if she is asleep.`;
+  return null;
 }
 function renderHero() {
-  heroCard('#feedCard', 'feed-c', 'Feeding', byType('feed'), feedInterval(), '🍼');
-  heroCard('#diaperCard', 'diaper-c', 'Diapers', byType('diaper'), diaperInterval(), '💧');
+  const now = Date.now(), d = dayOfLife(now), c = counts24(now), last = byType('feed').pop(), rep = repeatEntry(last);
+  const feedActions = rep
+    ? `<button class="logbtn feed-c" data-quick="feed-repeat">↻ Same as last<small>${esc(detail(rep))}</small></button><button class="btn wide2" data-log="feed">Change or log something different…</button>`
+    : `<button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button>`;
+  const feedTip = last ? (feedTiming() || 'On rhythm. Feed on cue: rooting, hands to mouth or lip-smacking come before crying.') : 'Newborns feed 8–12 times a day, about every 2–3 hours. Log the first one to start the predictions.';
+  heroCard('#feedCard', 'feed-c', 'Feeding', byType('feed'), feedInterval(), feedActions, feedTip, ['Feeding tips', TIPS.feeding]);
+  const diaperActions = `<div class="quick3"><button class="logbtn diaper-c" data-quick="wet">💧 Wet</button><button class="logbtn diaper-c" data-log="diaper" data-kind="dirty">💩 Dirty</button><button class="logbtn diaper-c" data-log="diaper" data-kind="both">Both</button></div>`;
+  const wg = wetGoal(d), dg = dirtyGoal(d);
+  const diaperTip = c.wet >= wg && c.dirty >= dg ? `On track: ${c.wet} wet and ${c.dirty} dirty in the last 24 hours (goal ${wg}+ and ${dg}+).` : `${c.wet} of ${wg}+ wet and ${c.dirty} of ${dg}+ dirty diapers in the last 24 hours. Wet is one tap. Dirty asks for the color.`;
+  heroCard('#diaperCard', 'diaper-c', 'Diapers', byType('diaper'), diaperInterval(), diaperActions, diaperTip, ['Diaper & poop guide', TIPS.diapers]);
 }
 
 function renderTiles(now, d) {
   const recent = state.logs.filter(l => now - l.t < 24 * H);
-  const feeds = recent.filter(l => l.type === 'feed').length;
-  const dia = recent.filter(l => l.type === 'diaper');
-  const wet = dia.filter(l => l.kind === 'wet' || l.kind === 'both').length;
-  const dirty = dia.filter(l => l.kind === 'dirty' || l.kind === 'both').length;
+  const { feeds, wet, dirty } = counts24(now);
   const tile = (k, v, goal, ok) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">goal ${goal}</div><div class="st ${ok ? 'ok' : 'low'}">${ok ? '✓ On track' : 'Below goal so far'}</div></div>`;
   const spits = recent.filter(l => l.type === 'note' && l.kind !== 'other'), ml = spits.reduce((a, l) => a + (l.amt || 0), 0);
   const bottle = recent.filter(l => l.type === 'feed' && !LEGACY_FEED[l.kind]);
@@ -594,66 +663,118 @@ function downloadIcs() {
   a.download = 'baby-schedule.ics'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
-/* ---------- log sheet ---------- */
+/* ---------- log sheets: smart defaults, chips instead of typing, live tips ---------- */
 const chips = (name, opts, sel, type = 'radio') => `<div class="chips">${opts.map(o => `<label><input type="${type}" name="${name}" value="${o[0]}" ${(Array.isArray(sel) ? sel.includes(o[0]) : o[0] === sel) ? 'checked' : ''}><span>${o[2] ? `<i class="swatch" style="background:${o[2]}"></i>` : ''}${o[1]}</span></label>`).join('')}</div>`;
 const localInput = t => { const d = new Date(t - new Date(t).getTimezoneOffset() * M); return d.toISOString().slice(0, 16); };
+const AGO = [['0', 'Just now'], ['5', '5 min'], ['10', '10 min'], ['15', '15 min'], ['30', '30 min'], ['60', '1 h'], ['custom', 'Other…']];
+const whenField = now => `<div class="field"><label class="l">When (how long ago?)</label>${chips('ago', AGO, '0')}<input type="datetime-local" name="when" value="${localInput(now)}" max="${localInput(now + H)}" hidden style="width:100%;margin-top:8px"></div>`;
+const noteField = ph => `<details class="addnote"><summary>＋ Add a note</summary><input type="text" name="note" placeholder="${ph}" style="width:100%"></details>`;
+const stepper = (name, val, step) => `<div class="step"><button type="button" class="btn" data-step="${-step}" data-for="${name}" aria-label="Less">−</button><input type="number" name="${name}" id="${name}" min="0" step="any" inputmode="decimal" value="${val ?? ''}"><button type="button" class="btn" data-step="${step}" data-for="${name}" aria-label="More">+</button></div>`;
+const ctxHtml = list => list.map(x => `<div class="ctx ${x.level}">${x.text}</div>`).join('');
+const actionsHtml = `<div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
+function readWhen(f) {
+  if (f.elements.ago.value === 'custom') { const t = new Date(f.elements.when.value).getTime(); return isNaN(t) ? Date.now() : t; }
+  return Date.now() - (+f.elements.ago.value) * M;
+}
+// Typical bottle volume per feed (mL) by day of life.
+const bottleRange = d => d <= 2 ? [15, 30] : d <= 7 ? [30, 60] : d <= 28 ? [60, 90] : [90, 120];
 
-function openSheet(type) {
-  const f = $('#sheetForm'), now = Date.now();
+function openSheet(type, opts = {}) {
+  const f = $('#sheetForm'), now = Date.now(), d = dayOfLife(now);
+  let update = () => {};
   if (type === 'feed') {
-    const last = byType('feed').pop();
-    const lastParts = last && !LEGACY_FEED[last.kind] ? String(last.kind).split(',') : ['breast'];
-    const nextSide = last?.sides === 'L' ? ['R'] : last?.sides === 'R' ? ['L'] : ['L'];
-    const num = (id, ph) => `<input type="number" id="${id}" name="${id}" min="0" step="any" inputmode="decimal" placeholder="${ph}" style="width:100%">`;
+    const last = byType('feed').pop(), rep = repeatEntry(last);
+    const lastParts = rep ? rep.kind.split(',') : ['breast'];
+    const r = bottleRange(d), mid = Math.round((r[0] + r[1]) / 2 / 5) * 5;
     f.innerHTML = `<h2>🍼 Log feeding</h2>
-      <div class="field"><label class="l">What did she have? (pick all that apply)</label>${chips('parts', FEED_PARTS, lastParts, 'checkbox')}</div>
-      <div class="field" id="secBreast"><label class="l">Breast side(s)</label>${chips('sides', SIDES, nextSide, 'checkbox')}
-        <label class="l" for="min" style="margin-top:12px">Minutes (optional)</label>${num('min', 'e.g. 15')}</div>
-      <div class="field" id="secFormula"><label class="l" for="fMl">Formula, mL</label>${num('fMl', 'e.g. 60')}</div>
-      <div class="field" id="secPumped"><label class="l" for="pMl">Pumped milk, mL</label>${num('pMl', 'e.g. 30')}</div>
+      <div class="field"><label class="l">What did she have? (pick all that apply)</label>${chips('parts', FEED_PARTS, lastParts, 'checkbox')}<div id="ctxTiming"></div></div>
+      <div class="field" id="secBreast"><label class="l">Breast side(s)</label>${chips('sides', SIDES, rep?.sides ? rep.sides.split('') : ['L'], 'checkbox')}
+        <label class="l" style="margin-top:12px">Minutes (optional)</label>${chips('min', [['', 'Skip'], ['5', '5'], ['10', '10'], ['15', '15'], ['20', '20'], ['30', '30']], '')}<div id="ctxBreast"></div></div>
+      <div class="field" id="secFormula"><label class="l">Formula, mL</label>${stepper('fMl', last?.fMl ?? mid, 10)}<div id="ctxFormula"></div></div>
+      <div class="field" id="secPumped"><label class="l">Pumped milk, mL</label>${stepper('pMl', last?.pMl ?? mid, 10)}<div id="ctxPumped"></div></div>
       <div class="callout" id="bottleTotal" style="margin:0"></div>
-      <div class="field"><label class="l" for="when">When</label><input type="datetime-local" id="when" name="when" value="${localInput(now)}" max="${localInput(now + H)}" style="width:100%"></div>
-      <div class="field"><label class="l" for="note">Note (optional)</label><input type="text" id="note" name="note" placeholder="latched well, sleepy…" style="width:100%"></div>
-      <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
-    const sync = () => {
+      ${whenField(now)}${noteField('latched well, sleepy…')}<p class="ferr" id="ferr" hidden></p>${actionsHtml}`;
+    update = () => {
       const on = k => f.querySelector(`input[name=parts][value=${k}]`).checked;
       $('#secBreast').hidden = !on('breast'); $('#secFormula').hidden = !on('formula'); $('#secPumped').hidden = !on('pumped');
-      const tot = (on('formula') ? +f.elements.fMl.value || 0 : 0) + (on('pumped') ? +f.elements.pMl.value || 0 : 0);
+      const fm = on('formula') ? +f.elements.fMl.value || 0 : 0, pm = on('pumped') ? +f.elements.pMl.value || 0 : 0, tot = fm + pm;
       $('#bottleTotal').hidden = !(on('formula') || on('pumped'));
-      $('#bottleTotal').innerHTML = `<b>Bottle total: ${tot} mL</b>Breast isn't counted in the total.`;
+      $('#bottleTotal').innerHTML = `<b>Bottle total: ${tot} mL</b>Breast isn't counted in the total.` +
+        (tot > r[1] * 1.5 ? `<div class="ctx watch">${tot} mL is above the usual amount for day ${d}. Bigger volumes can bring more spit-up: offer less and let her ask for more.</div>` : '');
+      const timing = feedTiming();
+      $('#ctxTiming').innerHTML = timing ? ctxHtml([{ level: 'ok', text: timing }]) : '';
+      $('#ctxBreast').innerHTML = ctxHtml([{ level: 'ok', text: 'Start on the side she finished on last time. A good latch: wide mouth, lips flanged out, steady swallowing. After a C-section, football hold or side-lying keeps weight off your incision.' }]);
+      $('#ctxFormula').innerHTML = ctxHtml([{ level: 'ok', text: `Typical on day ${d}: ${r[0]}–${r[1]} mL per feed. Pace the bottle, stop at fullness cues, toss leftovers after 1 hour.` }]);
+      $('#ctxPumped').innerHTML = ctxHtml([{ level: 'ok', text: 'Room temperature up to 4 h · fridge 4 days · freezer about 6 months. Warm in a bowl of warm water and swirl, don\'t shake.' }]);
     };
-    f.onchange = sync; f.oninput = sync; sync();
   } else if (type === 'note') {
-    f.innerHTML = `<h2>📝 Log spit-up or note</h2>
-      <div class="field"><label class="l">What happened?</label>${chips('kind', NOTE_KINDS, 'spitup')}</div>
-      <div class="field"><label class="l" for="amt">Amount lost, mL (optional)</label><input type="number" id="amt" name="amt" min="0" step="any" inputmode="decimal" placeholder="e.g. 15" style="width:100%"><p class="fine" style="margin-top:6px">A teaspoon is about 5 mL, a tablespoon about 15 mL.</p></div>
-      <div class="field"><label class="l" for="note">Notes</label><input type="text" id="note" name="note" placeholder="right after feeding, gassy, fussy…" style="width:100%"></div>
-      <div class="field"><label class="l" for="when">When</label><input type="datetime-local" id="when" name="when" value="${localInput(now)}" max="${localInput(now + H)}" style="width:100%"></div>
-      <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
-    f.onchange = null; f.oninput = null;
+    f.innerHTML = `<h2>📝 Spit-up or note</h2>
+      <div class="field"><label class="l">What happened?</label>${chips('kind', NOTE_KINDS, 'spitup')}<div id="ctx"></div></div>
+      <div class="field" id="secSize"><label class="l">How much? (tap to save)</label><div class="sizes">
+        <button class="btn" value="save" data-ml="5">A little<small>≈ 5 mL · teaspoon</small></button>
+        <button class="btn" value="save" data-ml="15">Some<small>≈ 15 mL · tablespoon</small></button>
+        <button class="btn" value="save" data-ml="30">A lot<small>≈ 30 mL · 2 tbsp</small></button></div>
+        <label class="l" style="margin-top:12px">Or exact amount, mL</label>${stepper('amt', '', 5)}</div>
+      ${whenField(now)}<div class="field"><label class="l">Note</label><input type="text" name="note" placeholder="right after feeding, gassy, fussy…" style="width:100%"></div>${actionsHtml}`;
+    update = () => {
+      const k = f.elements.kind.value;
+      $('#secSize').hidden = k === 'other';
+      $('#ctx').innerHTML = ctxHtml([k === 'vomit'
+        ? { level: 'watch', text: '<b>Vomit</b> is larger or forceful. Call the pediatrician if it shoots out, is green or yellow-green, bloody, keeps happening after feeds, or comes with fever, a swollen belly, fewer wet diapers or poor feeding.' }
+        : k === 'spitup' ? { level: 'ok', text: '<b>Spit-up</b> is common: a small, effortless dribble during or after feeds, usually 5–15 mL. It often looks like more than it is. Burp mid-feed and hold her upright for 15–20 minutes afterwards.' }
+        : { level: 'ok', text: 'Anything worth remembering for the pediatrician: fussiness, rash, sleepiness, a temperature reading.' }]);
+    };
   } else {
-    f.innerHTML = `<h2>💧 Log diaper change</h2>
-      <div class="field"><label class="l">What was in it?</label>${chips('kind', DIAPER_KINDS, 'wet')}</div>
-      <div id="poop" hidden>
-        <div class="field"><label class="l">Color</label>${chips('color', COLORS, '')}</div>
-        <div class="field" style="margin-top:14px"><label class="l">Consistency</label>${chips('cons', CONS, '')}</div>
+    const kind = opts.kind || 'dirty', last = byType('feed').pop();
+    const color = d <= 2 ? 'black' : d === 3 ? 'darkgreen' : d === 4 ? 'green' : 'yellow';
+    const cons = d <= 2 ? 'pasty' : last && String(last.kind).split(',').every(k => k !== 'breast') && !LEGACY_FEED[last.kind] ? 'pasty' : 'seedy';
+    f.innerHTML = `<h2>💧 Diaper change</h2>
+      <div class="field"><label class="l">What was in it?</label>${chips('kind', DIAPER_KINDS, kind)}<div id="ctxCount"></div></div>
+      <div id="poop">
+        <div class="field"><label class="l">Color (typical for day ${d} is pre-selected)</label>${chips('color', COLORS, color)}<div id="ctxColor"></div></div>
+        <div class="field" style="margin-top:14px"><label class="l">Consistency</label>${chips('cons', CONS, cons)}<div id="ctxCons"></div></div>
       </div>
-      <div class="field"><label class="l" for="when">When</label><input type="datetime-local" id="when" name="when" value="${localInput(now)}" max="${localInput(now + H)}" style="width:100%"></div>
-      <div class="field"><label class="l" for="note">Note (optional)</label><input type="text" id="note" name="note" placeholder="rash, diaper cream…" style="width:100%"></div>
-      <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
-    f.oninput = null; f.onchange = () => { $('#poop').hidden = f.kind.value === 'wet'; };
+      ${whenField(now)}${noteField('rash, diaper cream…')}${actionsHtml}`;
+    update = () => {
+      const k = f.elements.kind.value, c = counts24(Date.now());
+      $('#poop').hidden = k === 'wet';
+      const [ci, si] = [stoolInfo(f.elements.color.value, '', d), stoolInfo('', f.elements.cons.value, d)];
+      $('#ctxColor').innerHTML = ctxHtml(ci); $('#ctxCons').innerHTML = ctxHtml(si);
+      $('#ctxCount').innerHTML = ctxHtml([{ level: 'ok', text: `Last 24 h: ${c.wet} wet, ${c.dirty} dirty. Goal today: ${wetGoal(d)}+ wet, ${dirtyGoal(d)}+ dirty.` }]);
+    };
   }
-  f.dataset.type = type;
+  f.onchange = f.oninput = () => { f.elements.when.hidden = f.elements.ago.value !== 'custom'; update(); };
+  f.dataset.type = type; update();
   $('#sheet').showModal();
 }
+
+// One-tap logging with an undo, for the things that don't need details.
+function logQuick(entry, msg) {
+  op({ op: 'add', entry });
+  toast(msg, 7000, { label: 'Undo', fn: () => op({ op: 'delete', id: entry.id }) });
+}
+function repeatFeed() {
+  const rep = repeatEntry(byType('feed').pop());
+  if (!rep) return openSheet('feed');
+  const entry = { id: uid(), t: Date.now(), ...rep };
+  logQuick(entry, `Logged: ${detail(entry)}`);
+}
+const quickWet = () => logQuick({ id: uid(), type: 'diaper', t: Date.now(), kind: 'wet' }, '💧 Wet diaper logged');
+
+$('#sheetForm').addEventListener('click', e => {
+  const b = e.target.closest('[data-step]'); if (!b) return;
+  const inp = $('#sheetForm').elements[b.dataset.for];
+  inp.value = Math.max(0, (parseFloat(inp.value) || 0) + parseFloat(b.dataset.step));
+  inp.dispatchEvent(new Event('input', { bubbles: true }));
+});
 $('#sheetForm').addEventListener('submit', e => {
   const f = e.target, btn = e.submitter;
   if (!btn || btn.value !== 'save') return;
-  const type = f.dataset.type, el = f.elements, when = new Date(el.when.value).getTime();
-  const entry = { id: uid(), type, t: isNaN(when) ? Date.now() : when, note: el.note.value.trim() || undefined };
+  const type = f.dataset.type, el = f.elements;
+  const entry = { id: uid(), type, t: readWhen(f), note: el.note?.value.trim() || undefined };
   if (type === 'feed') {
     const parts = [...f.querySelectorAll('input[name=parts]:checked')].map(i => i.value);
-    if (!parts.length) { e.preventDefault(); toast('Pick breast, formula or pumped milk'); return; }
+    if (!parts.length) { e.preventDefault(); $('#ferr').textContent = 'Pick breast, formula or pumped milk.'; $('#ferr').hidden = false; return; }
     entry.kind = parts.join(',');
     if (parts.includes('breast')) {
       entry.sides = [...f.querySelectorAll('input[name=sides]:checked')].map(i => i.value).join('') || undefined;
@@ -662,21 +783,23 @@ $('#sheetForm').addEventListener('submit', e => {
     if (parts.includes('formula')) entry.fMl = parseFloat(el.fMl.value) || undefined;
     if (parts.includes('pumped')) entry.pMl = parseFloat(el.pMl.value) || undefined;
     entry.amt = (entry.fMl || 0) + (entry.pMl || 0) || undefined;   // bottle total only, never breast
+  } else if (type === 'note') {
+    entry.kind = el.kind.value;
+    entry.amt = entry.kind === 'other' ? undefined : parseFloat(btn.dataset.ml) || parseFloat(el.amt.value) || undefined;
   } else {
     entry.kind = el.kind.value;
-    if (type === 'note') entry.amt = parseFloat(el.amt.value) || undefined;
-    else if (entry.kind !== 'wet') { entry.color = el.color.value || undefined; entry.cons = el.cons.value || undefined; }
+    if (entry.kind !== 'wet') { entry.color = el.color.value || undefined; entry.cons = el.cons.value || undefined; }
   }
-  op({ op: 'add', entry });
   const fl = flagFor(entry);
-  toast(fl ? fl.msg : { feed: 'Feeding logged', diaper: 'Diaper logged', note: 'Note logged' }[type], fl ? 6000 : 2200);
+  op({ op: 'add', entry });
+  toast(fl ? fl.msg : `Logged: ${detail(entry)}`, fl ? 8000 : 7000, { label: 'Undo', fn: () => op({ op: 'delete', id: entry.id }) });
 });
 
 /* ---------- guide ---------- */
 function renderNow(d) {
   const T = {
     1: ['Day 1: welcome, ' + NAME, 'Colostrum comes in tiny amounts and that is exactly enough. Feed on cue, skin-to-skin as much as you can, and expect the first black, tarry meconium stool. After a C-section, side-lying or football hold keeps her off your incision.'],
-    2: ['Day 2: cluster feeding is normal', 'She may want to nurse very often, which helps bring your milk in. Aim for 2+ wet diapers and stools that are still dark and tarry. Formula babies take about 0.5–1 oz per feed.'],
+    2: ['Day 2: cluster feeding is normal', 'She may want to nurse very often, which helps bring your milk in. Aim for 2+ wet diapers and stools that are still dark and tarry. Formula babies take about 15–30 mL (0.5–1 oz) per feed.'],
     3: ['Day 3: milk is coming in', 'Milk usually arrives on days 3–5 (sometimes a little later after a C-section). Expect 3+ wet diapers and stools turning greenish-brown. Her first pediatric visit is usually due within 48–72 hours of leaving the hospital.'],
     4: ['Day 4: stools turning yellow', 'Look for 4+ wet diapers and 3+ stools shifting to green-yellow. Newborn jaundice peaks around days 3–5: yellow skin or eyes, or a sleepy baby who feeds poorly, is a reason to call.'],
   };
@@ -690,7 +813,7 @@ const TIPS = {
   feeding: `<h3>How often &amp; how much</h3><ul>
     <li><b>8–12 feeds per 24 hours</b>, roughly every 2–3 hours, counted from the <i>start</i> of one feed to the start of the next.</li>
     <li>Wake her to feed if she sleeps longer than <b>3 hours</b> until she is back to birth weight (usually ~2 weeks). Losing up to 7–10% of birth weight in the first days is normal.</li>
-    <li>Formula per feed: days 1–2 ≈ 0.5–1 oz · days 3–7 ≈ 1–2 oz · weeks 2–4 ≈ 2–3 oz. Let her cues decide, never force a bottle.</li>
+    <li>Formula per feed: days 1–2 ≈ 15–30 mL · days 3–7 ≈ 30–60 mL · weeks 2–4 ≈ 60–90 mL (about 0.5–1, 1–2 and 2–3 oz). Let her cues decide, never force a bottle.</li>
     <li>Breastfeeding: 10–20 min per side, or until she comes off on her own. Alternate the side you start on.</li></ul>
     <h3>Hunger cues (before crying)</h3><ul><li>Rooting, hands to mouth, lip smacking, stretching. Crying is a <i>late</i> cue.</li></ul>
     <h3>Good latch &amp; enough milk</h3><ul>
@@ -753,20 +876,18 @@ const TIPS = {
     <h3>Call 911</h3><ul><li>Trouble breathing, blue or gray lips or face, a seizure, or she can't be woken.</li></ul>
     <h3>Appointments</h3><ul><li>First pediatric visit within 48–72 hours of hospital discharge, then a weight check about every week or two. Bring this log.</li></ul>`,
 };
-const TABS = [['feeding', 'Feeding'], ['diapers', 'Diapers & poop'], ['rhythm', 'Daily rhythm & sleep'], ['call', 'When to call']];
-let tab = 'feeding';
-function renderTabs() {
-  $('#tabs').innerHTML = TABS.map(([k, l]) => `<button role="tab" aria-selected="${k === tab}" data-tab="${k}">${l}</button>`).join('');
-  $('#tipBody').innerHTML = TIPS[tab];
-}
-
 /* ---------- events ---------- */
 let toastTimer;
-function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, ms); }
+function toast(msg, ms = 2200, action) {
+  const t = $('#toast'); t.textContent = '';
+  const m = document.createElement('span'); m.textContent = msg; t.append(m);
+  if (action) { const b = document.createElement('button'); b.type = 'button'; b.textContent = action.label; b.onclick = () => { action.fn(); t.hidden = true; }; t.append(b); }
+  t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, ms);
+}
 document.addEventListener('click', e => {
-  const l = e.target.closest('[data-log]'); if (l) return openSheet(l.dataset.log);
+  const q = e.target.closest('[data-quick]'); if (q) return q.dataset.quick === 'wet' ? quickWet() : repeatFeed();
+  const l = e.target.closest('[data-log]'); if (l) return openSheet(l.dataset.log, { kind: l.dataset.kind });
   const del = e.target.closest('[data-del]'); if (del) { if (confirm('Delete this entry?')) op({ op: 'delete', id: del.dataset.del }); return; }
-  const tb = e.target.closest('[data-tab]'); if (tb) { tab = tb.dataset.tab; renderTabs(); }
 });
 $('#feedInt').addEventListener('change', e => op({ op: 'settings', settings: { feedInterval: e.target.value } }));
 $('#icsBtn').addEventListener('click', downloadIcs);
@@ -800,8 +921,8 @@ $('#mode').addEventListener('click', openSettings);
   pending = lsGet(LS_PEND) || []; cfg = lsGet(LS_CFG);
   // One-time setup link: https://…/#u=<web app url>&k=<secret>. The hash never leaves the browser.
   const h = new URLSearchParams(location.hash.slice(1));
-  if (h.get('u') && h.get('k')) { history.replaceState(null, '', location.pathname + location.search); renderTabs(); render(); await connect({ url: h.get('u'), key: h.get('k') }, {}); }
-  renderTabs(); render();
+  if (h.get('u') && h.get('k')) { history.replaceState(null, '', location.pathname + location.search); render(); await connect({ url: h.get('u'), key: h.get('k') }, {}); }
+  render();
   if (cfg) { await pull(); if (!connected) { serverRev = -1; try { const j = await api('state'); state = j.state; serverRev = j.state.rev; connected = true; } catch {} } render(); flush(); syncCalendar(true); }
   if (!state.settings.birthMs) openSettings();
   setInterval(() => { render(); syncCalendar(); }, 60 * 1000);
