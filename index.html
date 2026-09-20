@@ -9,51 +9,49 @@
 <style>
 :root {
   color-scheme: light;
-  --bg: #f6f4f1;
-  --surface: #ffffff;
-  --ink: #1c1b19;
-  --ink-2: #5b5a55;
-  --muted: #8a8880;
-  --line: #e7e4de;
-  --feed: #2a78d6;
-  --diaper: #eb6834;
-  --good: #2e7d32;
-  --warn: #9a6700;
-  --warn-bg: #fff4d6;
+  --bg: #fbf3f1;
+  --glow: #fde6ec;
+  --surface: #fffcfb;
+  --ink: #3b2b30;
+  --ink-2: #75606a;
+  --muted: #8b767f;
+  --line: #f0dfdf;
+  --chip: #f6e9e8;
+  --shadow: 0 1px 2px rgba(150, 70, 100, .06), 0 10px 28px rgba(150, 70, 100, .07);
+  --feed: #c94a78;   /* rose */
+  --diaper: #3b82d6; /* powder blue */
+  --note: #bd7a12;   /* honey */
+  --btn-feed: #b03a66; --btn-diaper: #2f6fc0; --btn-note: #8f5b0a; --on-btn: #ffffff;
+  --accent: #b03a66;
+  --good: #2e7d46;
+  --warn: #8f5b0a;
+  --warn-bg: #fff2d9;
   --crit: #b3261e;
   --crit-bg: #fde8e6;
-  --chip: #f0ede8;
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --bg: #141413;
-    --surface: #1e1e1c;
-    --ink: #f2f1ec;
-    --ink-2: #c3c2b7;
-    --muted: #8f8e85;
-    --line: #33322e;
-    --feed: #3987e5;
-    --diaper: #d95926;
-    --good: #6fcf7f;
-    --warn: #f0b429;
-    --warn-bg: #3a2f10;
-    --crit: #ff8a80;
-    --crit-bg: #3d1a17;
-    --chip: #2a2926;
+    --bg: #191214; --glow: #2b1a21; --surface: #241a1d; --ink: #f6ebee; --ink-2: #cdb9c0; --muted: #9a868d;
+    --line: #382a2f; --chip: #2f2226; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.25);
+    --feed: #d45f8a; --diaper: #3987e5; --note: #c98500;
+    --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --on-btn: #1c1416; --accent: #d45f8a;
+    --good: #6fcf8f; --warn: #f0b429; --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a1d;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #141413; --surface: #1e1e1c; --ink: #f2f1ec; --ink-2: #c3c2b7; --muted: #8f8e85;
-  --line: #33322e; --feed: #3987e5; --diaper: #d95926; --good: #6fcf7f; --warn: #f0b429;
-  --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a17; --chip: #2a2926;
+  --bg: #191214; --glow: #2b1a21; --surface: #241a1d; --ink: #f6ebee; --ink-2: #cdb9c0; --muted: #9a868d;
+  --line: #382a2f; --chip: #2f2226; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.25);
+  --feed: #d45f8a; --diaper: #3987e5; --note: #c98500;
+  --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --on-btn: #1c1416; --accent: #d45f8a;
+  --good: #6fcf8f; --warn: #f0b429; --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a1d;
 }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
-  margin: 0; background: var(--bg); color: var(--ink);
+  margin: 0; background: var(--bg) radial-gradient(120% 420px at 50% -60px, var(--glow), transparent) no-repeat; color: var(--ink);
   font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   padding: env(safe-area-inset-top) 16px calc(32px + env(safe-area-inset-bottom));
 }
@@ -61,12 +59,14 @@ main { max-width: 760px; margin: 0 auto; }
 h1, h2, h3, p { margin: 0; }
 button { font: inherit; color: inherit; cursor: pointer; }
 
-.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 20px 0 14px; }
-.top h1 { font-size: 30px; letter-spacing: -0.02em; line-height: 1.1; }
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px; padding: 20px 0 14px; }
+.top > div { flex: 1 1 200px; min-width: 0; }
+.top h1 { white-space: nowrap; font-family: ui-serif, "New York", Georgia, serif; font-weight: 600; font-size: 34px; letter-spacing: -0.01em; line-height: 1.1; }
+.top h1::after { content: " ✿"; color: var(--feed); font-size: .55em; vertical-align: .35em; }
 .top .age { color: var(--ink-2); font-size: 14px; margin-top: 4px; }
 .pill { border: 0; cursor: pointer; font-family: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--chip); color: var(--ink-2); white-space: nowrap; }
 
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px; box-shadow: var(--shadow); }
 section { margin-top: 16px; }
 .sec-title { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 2px 8px; }
 
@@ -79,7 +79,7 @@ section { margin-top: 16px; }
 @media (min-width: 620px) { .hero { grid-template-columns: 1fr 1fr; } }
 .tracker .head { display: flex; align-items: center; gap: 8px; font-weight: 650; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.feed-c { background: var(--feed); } .diaper-c { background: var(--diaper); }
+.feed-c { background: var(--feed); } .diaper-c { background: var(--diaper); } .note-c { background: var(--note); }
 .tracker .big { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin-top: 10px; font-variant-numeric: tabular-nums; }
 .tracker .sub { color: var(--ink-2); font-size: 14px; margin-top: 2px; }
 .next { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -89,10 +89,11 @@ section { margin-top: 16px; }
 .next .rel.due { color: var(--warn); font-weight: 650; }
 .bar { height: 6px; border-radius: 3px; background: var(--chip); margin-top: 10px; overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: 3px; }
-.logbtn { width: 100%; margin-top: 14px; min-height: 48px; border: 0; border-radius: 12px; font-weight: 650; color: #fff; }
-.logbtn.feed-c { background: var(--feed); } .logbtn.diaper-c { background: var(--diaper); }
+.wide { width: 100%; margin-top: 12px; min-height: 48px; border-radius: 14px; font-weight: 600; background: var(--surface); box-shadow: var(--shadow); }
+.wide .dot { display: inline-block; margin-right: 8px; }
+.logbtn { width: 100%; margin-top: 14px; min-height: 50px; border: 0; border-radius: 14px; font-weight: 650; color: var(--on-btn); }
+.logbtn.feed-c { background: var(--btn-feed); } .logbtn.diaper-c { background: var(--btn-diaper); }
 .logbtn:active { filter: brightness(0.9); }
-.logbtn.diaper-c { color: #1c1b19; }
 
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .tile { padding: 12px; }
@@ -139,7 +140,7 @@ select, input[type="number"], input[type="datetime-local"], input[type="password
 
 .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
 .tabs button { flex: none; border: 1px solid var(--line); background: var(--chip); border-radius: 999px; padding: 8px 14px; font-size: 14px; }
-.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--on-btn); border-color: var(--accent); }
 .tips h3 { font-size: 15px; margin: 14px 0 4px; }
 .tips h3:first-child { margin-top: 0; }
 .tips ul { margin: 4px 0 0; padding-left: 20px; }
@@ -152,7 +153,7 @@ select, input[type="number"], input[type="datetime-local"], input[type="password
 .callout b { display: block; margin-bottom: 2px; }
 .fine { color: var(--muted); font-size: 12px; margin-top: 16px; }
 
-dialog { border: 0; border-radius: 20px; padding: 0; width: min(520px, calc(100vw - 24px)); background: var(--surface); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+dialog { border: 0; border-radius: 24px; padding: 0; width: min(520px, calc(100vw - 24px)); background: var(--surface); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
 dialog::backdrop { background: rgba(0,0,0,.45); }
 dialog form { padding: 18px; display: grid; gap: 14px; }
 dialog h2 { font-size: 20px; }
@@ -161,12 +162,12 @@ dialog h2 { font-size: 20px; }
 .chips label { position: relative; }
 .chips input { position: absolute; opacity: 0; inset: 0; }
 .chips span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--chip); font-size: 15px; }
-.chips input:checked + span { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chips input:checked + span { background: var(--accent); color: var(--on-btn); border-color: var(--accent); }
 .chips input:focus-visible + span { outline: 2px solid var(--feed); outline-offset: 2px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .actions { display: flex; gap: 10px; justify-content: flex-end; }
 .actions .btn { min-height: 48px; padding: 0 18px; }
-.actions .primary { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 650; }
+.actions .primary { background: var(--accent); color: var(--on-btn); border-color: var(--accent); font-weight: 650; }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 10; max-width: calc(100vw - 32px); }
 </style>
 </head>
@@ -186,6 +187,7 @@ dialog h2 { font-size: 20px; }
     <div class="card tracker" id="feedCard"></div>
     <div class="card tracker" id="diaperCard"></div>
   </div>
+  <button class="btn wide" data-log="note" type="button"><i class="dot note-c"></i>Log spit-up or note</button>
 
   <section>
     <div class="sec-title">Last 24 hours</div>
@@ -198,6 +200,7 @@ dialog h2 { font-size: 20px; }
       <div class="legend">
         <span><i class="dot feed-c"></i>Feeding</span>
         <span><i class="dot diaper-c"></i>Diaper</span>
+        <span><i class="dot note-c"></i>Spit-up / notes</span>
         <span><i class="ring"></i>Predicted</span>
       </div>
       <div id="tl"></div>
@@ -244,7 +247,7 @@ dialog h2 { font-size: 20px; }
   <h2>Settings</h2>
   <div class="field"><label class="l" for="cfgName">Baby's name</label><input type="text" id="cfgName" name="name" style="width:100%" autocomplete="off"></div>
   <div class="field"><label class="l" for="cfgBirth">Birth date &amp; time</label><input type="datetime-local" id="cfgBirth" name="birth" style="width:100%"></div>
-  <div class="field"><label class="l" for="cfgUrl">Google Sheet connection: web app URL</label><input type="text" id="cfgUrl" name="url" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+  <div class="field"><label class="l" for="cfgUrl">Web app URL (from Apps Script → Deploy, ends in /exec, not the Sheet address)</label><input type="text" id="cfgUrl" name="url" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
   <div class="field"><label class="l" for="cfgKey">Secret key</label><input type="password" id="cfgKey" name="key" style="width:100%" autocomplete="off"></div>
   <p class="fine" style="margin:0">Name and birth time are saved to your Sheet, not to the website's code.</p>
   <div class="actions"><button class="btn" value="disconnect" formnovalidate id="cfgOff">Disconnect</button><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>
@@ -267,6 +270,7 @@ const COLORS = [
   ['yellow','Mustard yellow','#d4a72c'], ['tan','Tan / yellow-brown','#b58a4a'], ['brown','Brown','#7a5230'],
   ['red','Red / bloody','#b3261e'], ['white','White / pale gray','#d9d6cc'],
 ];
+const NOTE_KINDS = [['spitup','Spit-up'],['vomit','Vomit'],['other','Other note']];
 const CONS = [['seedy','Seedy / soft'],['pasty','Pasty'],['loose','Loose'],['watery','Watery'],['formed','Soft formed'],['pellets','Hard pellets']];
 
 /* ---------- state ---------- */
@@ -299,8 +303,10 @@ const savePending = () => lsSet(LS_PEND, pending);
 
 async function api(action, payload = {}) {
   // text/plain keeps this a "simple" request, so Apps Script needs no CORS preflight.
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(cfg.url)) throw new Error('That is not the web app address. It should start with https://script.google.com/macros/s/ and end with /exec (from Deploy → Manage deployments), not the Sheet\'s address.');
   const r = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ key: cfg.key, action, ...payload }) });
-  const j = await r.json();
+  let j;
+  try { j = await r.json(); } catch { throw new Error('Google sent back a web page instead of an answer. Check that the deployment is set to "Who has access: Anyone" and that you copied the /exec address.'); }
   if (!j.ok) throw new Error(j.error || 'Request failed');
   return j;
 }
@@ -416,7 +422,12 @@ const colorHex = k => (COLORS.find(c => c[0] === k) || [])[2];
 const consName = k => (CONS.find(c => c[0] === k) || [])[1];
 const kindName = (list, k) => (list.find(c => c[0] === k) || [])[1] || k;
 
+function flagFor(e) {
+  if (e.type === 'note' && e.kind === 'vomit') return { level: 'watch', msg: 'Vomiting: call the pediatrician if it is forceful (shoots out), green or yellow-green, bloody, or keeps happening after feeds.' };
+  return stoolFlag(e);
+}
 function detail(e) {
+  if (e.type === 'note') return kindName(NOTE_KINDS, e.kind) + (e.amt ? ` · ${e.amt} mL` : '');
   if (e.type === 'feed') {
     const unit = e.kind.startsWith('breast') ? ' min' : ' oz';
     return kindName(FEED_KINDS, e.kind) + (e.amt ? ` · ${e.amt}${unit}` : '');
@@ -444,7 +455,7 @@ function render() {
 }
 
 function renderAlerts(now) {
-  const flagged = state.logs.filter(l => l.type === 'diaper' && now - l.t < 24 * H).map(l => [l, stoolFlag(l)]).filter(x => x[1]);
+  const flagged = state.logs.filter(l => now - l.t < 24 * H).map(l => [l, flagFor(l)]).filter(x => x[1]);
   flagged.sort((a, b) => (a[1].level === 'call' ? 0 : 1) - (b[1].level === 'call' ? 0 : 1));
   $('#alerts').innerHTML = flagged.slice(0, 2).map(([l, f]) =>
     `<div class="alert ${f.level}" role="alert"><span>${f.level === 'call' ? '⚠️' : '👀'}</span><span><b>${f.level === 'call' ? 'Call the pediatrician' : 'Keep an eye on this'}</b> · ${fmtWhen(l.t)}<br>${esc(f.msg)}</span></div>`).join('');
@@ -478,19 +489,21 @@ function renderTiles(now, d) {
   const wet = dia.filter(l => l.kind === 'wet' || l.kind === 'both').length;
   const dirty = dia.filter(l => l.kind === 'dirty' || l.kind === 'both').length;
   const tile = (k, v, goal, ok) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">goal ${goal}</div><div class="st ${ok ? 'ok' : 'low'}">${ok ? '✓ On track' : 'Below goal so far'}</div></div>`;
-  $('#tiles').innerHTML = tile('Feedings', feeds, '8–12', feeds >= 8) + tile('Wet diapers', wet, wetGoal(d) + '+', wet >= wetGoal(d)) + tile('Dirty diapers', dirty, dirtyGoal(d) + '+', dirty >= dirtyGoal(d));
+  const spits = recent.filter(l => l.type === 'note' && l.kind !== 'other'), ml = spits.reduce((a, l) => a + (l.amt || 0), 0);
+  const extra = spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${Math.round(ml)} mL lost` : ''}</div>` : '';
+  $('#tiles').innerHTML = extra + tile('Feedings', feeds, '8–12', feeds >= 8) + tile('Wet diapers', wet, wetGoal(d) + '+', wet >= wetGoal(d)) + tile('Dirty diapers', dirty, dirtyGoal(d) + '+', dirty >= dirtyGoal(d));
 }
 
 let tlItems = [];
 function renderTimeline(now) {
-  const box = $('#tl'), w = box.clientWidth || 340, h = 168, padX = 12;
+  const box = $('#tl'), w = box.clientWidth || 340, h = 216, padX = 12;
   const t0 = now - 24 * H, t1 = now + 6 * H, x = t => padX + (t - t0) / (t1 - t0) * (w - 2 * padX);
-  const rows = { feed: 56, diaper: 108 };
+  const rows = { feed: 56, diaper: 108, note: 160 };
   tlItems = [];
   state.logs.filter(l => l.t >= t0 && l.t <= t1).forEach(l => tlItems.push({ x: x(l.t), y: rows[l.type], type: l.type, pred: false, tip: `${fmtWhen(l.t)} · ${detail(l)}` }));
   buildSlots().forEach(s => { if (s.start <= t1) tlItems.push({ x: x(s.start), y: rows[s.kind], type: s.kind, pred: true, tip: `≈ ${fmtWhen(s.start)} · predicted` }); });
   let svg = `<svg viewBox="0 0 ${w} ${h}" height="${h}" role="img" aria-label="Timeline of feedings and diaper changes over the last 24 hours">`;
-  svg += `<text x="${padX}" y="${rows.feed - 22}">Feedings</text><text x="${padX}" y="${rows.diaper - 22}">Diapers</text>`;
+  svg += `<text x="${padX}" y="${rows.feed - 22}">Feedings</text><text x="${padX}" y="${rows.diaper - 22}">Diapers</text><text x="${padX}" y="${rows.note - 22}">Spit-up / notes</text>`;
   Object.values(rows).forEach(y => { svg += `<line x1="${padX}" x2="${w - padX}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`; });
   for (let t = Math.ceil(t0 / H) * H; t <= t1; t += H) {
     const hr = new Date(t).getHours();
@@ -501,7 +514,7 @@ function renderTimeline(now) {
   }
   svg += `<line x1="${x(now)}" x2="${x(now)}" y1="30" y2="${h - 24}" stroke="var(--ink-2)" stroke-width="1.5"/><text x="${x(now)}" y="${h - 6}" text-anchor="middle" style="font-weight:700">Now</text>`;
   tlItems.forEach((it, i) => {
-    const c = it.type === 'feed' ? 'var(--feed)' : 'var(--diaper)';
+    const c = { feed: 'var(--feed)', diaper: 'var(--diaper)', note: 'var(--note)' }[it.type];
     svg += it.pred
       ? `<circle cx="${it.x}" cy="${it.y}" r="6" fill="var(--surface)" stroke="${c}" stroke-width="2"/>`
       : `<circle cx="${it.x}" cy="${it.y}" r="6" fill="${c}" stroke="var(--surface)" stroke-width="2"/>`;
@@ -526,9 +539,9 @@ function renderSchedule(now) {
 function renderLog() {
   const items = [...state.logs].sort((a, b) => b.t - a.t).slice(0, 40);
   $('#log').innerHTML = items.length ? items.map(l => {
-    const f = stoolFlag(l), hex = l.type === 'diaper' && l.color ? colorHex(l.color) : null;
+    const f = flagFor(l), hex = l.type === 'diaper' && l.color ? colorHex(l.color) : null;
     return `<li><span class="t">${fmtWhen(l.t)}</span>
-      <span class="d"><i class="dot ${l.type === 'feed' ? 'feed-c' : 'diaper-c'}" style="display:inline-block;margin-right:8px"></i>${hex ? `<span class="swatch" style="background:${hex}"></span>` : ''}${esc(detail(l))}${f ? `<span class="flag ${f.level}">${f.level === 'call' ? 'CALL DR' : 'WATCH'}</span>` : ''}${l.note ? `<small>${esc(l.note)}</small>` : ''}</span>
+      <span class="d"><i class="dot ${{ feed: 'feed-c', diaper: 'diaper-c', note: 'note-c' }[l.type]}" style="display:inline-block;margin-right:8px"></i>${hex ? `<span class="swatch" style="background:${hex}"></span>` : ''}${esc(detail(l))}${f ? `<span class="flag ${f.level}">${f.level === 'call' ? 'CALL DR' : 'WATCH'}</span>` : ''}${l.note ? `<small>${esc(l.note)}</small>` : ''}</span>
       <button class="x" data-del="${l.id}" aria-label="Delete entry">×</button></li>`;
   }).join('') : '<li class="empty">No entries yet. Tap “Log feeding” or “Log diaper change” above.</li>';
 }
@@ -587,6 +600,14 @@ function openSheet(type) {
       <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
     const sync = () => { const b = f.kind.value.startsWith('breast'); $('#amtL').textContent = b ? 'Minutes (optional)' : 'Ounces (optional)'; };
     f.onchange = sync; sync();
+  } else if (type === 'note') {
+    f.innerHTML = `<h2>📝 Log spit-up or note</h2>
+      <div class="field"><label class="l">What happened?</label>${chips('kind', NOTE_KINDS, 'spitup')}</div>
+      <div class="field"><label class="l" for="amt">Amount lost, mL (optional)</label><input type="number" id="amt" name="amt" min="0" step="any" inputmode="decimal" placeholder="e.g. 15" style="width:100%"><p class="fine" style="margin-top:6px">A teaspoon is about 5 mL, a tablespoon about 15 mL.</p></div>
+      <div class="field"><label class="l" for="note">Notes</label><input type="text" id="note" name="note" placeholder="right after feeding, gassy, fussy…" style="width:100%"></div>
+      <div class="field"><label class="l" for="when">When</label><input type="datetime-local" id="when" name="when" value="${localInput(now)}" max="${localInput(now + H)}" style="width:100%"></div>
+      <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
+    f.onchange = null;
   } else {
     f.innerHTML = `<h2>💧 Log diaper change</h2>
       <div class="field"><label class="l">What was in it?</label>${chips('kind', DIAPER_KINDS, 'wet')}</div>
@@ -607,11 +628,11 @@ $('#sheetForm').addEventListener('submit', e => {
   if (!btn || btn.value !== 'save') return;
   const type = f.dataset.type, when = new Date(f.when.value).getTime();
   const entry = { id: uid(), type, t: isNaN(when) ? Date.now() : when, kind: f.kind.value, note: f.note.value.trim() || undefined };
-  if (type === 'feed') entry.amt = parseFloat(f.amt.value) || undefined;
+  if (type === 'feed' || type === 'note') entry.amt = parseFloat(f.amt.value) || undefined;
   else if (entry.kind !== 'wet') { entry.color = f.color.value || undefined; entry.cons = f.cons.value || undefined; }
   op({ op: 'add', entry });
-  const fl = stoolFlag(entry);
-  toast(fl ? fl.msg : type === 'feed' ? 'Feeding logged' : 'Diaper logged', fl ? 6000 : 2200);
+  const fl = flagFor(entry);
+  toast(fl ? fl.msg : { feed: 'Feeding logged', diaper: 'Diaper logged', note: 'Note logged' }[type], fl ? 6000 : 2200);
 });
 
 /* ---------- guide ---------- */
@@ -641,6 +662,9 @@ const TIPS = {
     <h3>After a C-section</h3><ul>
     <li>Football hold or side-lying keep weight off your incision. Put a pillow over it for other positions.</li>
     <li>Milk can come in a day or so later. Keep feeding often, and ask your team which pain medicines are fine while nursing.</li></ul>
+    <h3>Spit-up vs. vomit</h3><ul>
+    <li><b>Spit-up</b> is common: a small, effortless dribble (usually a teaspoon to a tablespoon, 5–15 mL) during or after feeds. It often looks like more than it is. Burp mid-feed and hold her upright 15–20 minutes afterwards.</li>
+    <li><b>Vomit</b> is larger or forceful. Call the pediatrician if it shoots out, is green or yellow-green, bloody, keeps happening after feeds, or comes with fever, a swollen belly, fewer wet diapers or poor feeding.</li></ul>
     <h3>Good to know</h3><ul>
     <li>Cluster feeding (back-to-back feeds, often evenings) is normal and not a sign of low supply.</li>
     <li>Burp mid-feed and after. Spit-up is common; forceful or green vomiting is not.</li>
