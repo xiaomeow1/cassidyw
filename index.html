@@ -349,7 +349,7 @@ const COLORS = [
   ['red','Red / bloody','#b3261e'], ['white','White / pale gray','#d9d6cc'],
 ];
 const NOTE_KINDS = [['spitup','Spit-up'],['vomit','Vomit'],['other','Other note']];
-const STORE = [['fridge', 'Fridge'], ['freezer', 'Freezer'], ['discarded', 'Discarded / spilled']];
+const STORE = [['fridge', 'Fridge'], ['freezer', 'Freezer'], ['fed', 'Fed to baby'], ['discarded', 'Discarded / spilled']];
 const STATUS = [['content', '😊', 'Content'], ['sleepy', '😴', 'Sleepy'], ['alert', '👀', 'Alert'], ['fussy', '😣', 'Fussy'], ['gassy', '💨', 'Gassy'], ['unwell', '🤒', 'Unwell']];
 const TAGS = [['jaundice', 'Jaundice'], ['rash', 'Rash'], ['congestion', 'Congestion'], ['cord', 'Cord stump'], ['cluster', 'Cluster feeding'], ['bath', 'Bath'], ['skin', 'Skin-to-skin'], ['tummy', 'Tummy time'], ['doctor', 'Doctor visit'], ['milestone', 'Milestone']];
 const TAG_TIPS = {
@@ -936,7 +936,8 @@ const BUILDERS = {
         <details class="addnote" ${src.lMl || src.rMl ? 'open' : ''}><summary>＋ Split by left / right</summary>
           <div class="field"><label class="l">Left</label>${stepper('lMl', v(src.lMl), { ml: step })}</div>
           <div class="field"><label class="l">Right</label>${stepper('rMl', v(src.rMl), { ml: step })}</div></details>
-        <div class="field"><label class="l">Where did it go?</label>${chips('store', STORE, src.store ?? last?.store ?? 'fridge')}<div id="ctxStore"></div></div>
+        <div class="field"><label class="l">Where did it go?</label>${chips('store', STORE, src.store ?? last?.store ?? 'fridge')}<div id="ctxStore"></div>
+          ${ed ? '' : `<label class="ctx" id="alsoFeed" hidden style="display:none;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" name="alsoFeed" checked style="width:20px;height:20px"><span>Also log it as a feeding (pumped milk) on the Track tab</span></label>`}</div>
         ${whenField(at, ed && at)}${noteField('let-down, comfort, flange size…', ed?.note)}`,
       update(f, ev) {
         const u = f.elements.unit.value, tgt = ev?.target?.name;
@@ -945,7 +946,9 @@ const BUILDERS = {
         if (!ed && since > 4 * H) ctx.push({ level: 'watch', text: `It has been ${dur(since)} since the last session. Early on, try to pump at least every 3–4 hours.` });
         $('#ctxDur').innerHTML = ctxHtml([...ctx, { level: 'ok', text: 'About 15–20 minutes, or until milk has stopped flowing for about 2 minutes. Early on, 8 sessions in 24 hours (including one overnight) helps build supply.' }]);
         $('#ctxVol').innerHTML = ctxHtml([{ level: 'ok', text: expect(u) }]);
-        $('#ctxStore').innerHTML = ctxHtml([{ level: 'ok', text: f.elements.store.value === 'discarded' ? "Discarded milk isn't counted in your estimated stash." : 'Fridge up to 4 days · freezer about 6 months. Label with the date and use the oldest first.' }]);
+        const stv = f.elements.store.value;
+        $('#ctxStore').innerHTML = ctxHtml([{ level: 'ok', text: stv === 'discarded' ? "Discarded milk isn't counted in your estimated stash." : stv === 'fed' ? 'Given straight from the pump. It counts as pumped, and as fed once it is logged as a pumped-milk feeding.' : 'Fridge up to 4 days · freezer about 6 months. Label with the date and use the oldest first.' }]);
+        const af = $('#alsoFeed'); if (af) af.style.display = stv === 'fed' ? 'flex' : 'none';
       },
       collect(f, entry) {
         const el = f.elements, u = el.unit.value, n = k => parseFloat(el[k].value) || 0;
@@ -1083,7 +1086,13 @@ $('#sheetForm').addEventListener('submit', e => {
     toast(fl ? fl.msg : `Updated: ${detail(entry)}`, fl ? 8000 : 7000, { label: 'Undo', fn: () => op({ op: 'update', entry: ed }) });
   } else {
     op({ op: 'add', entry });
-    toast(fl ? fl.msg : `Logged: ${detail(entry)}`, fl ? 8000 : 7000, { label: 'Undo', fn: () => op({ op: 'delete', id: entry.id }) });
+    let feed = null;
+    if (type === 'pump' && entry.store === 'fed' && entry.amt && f.elements.alsoFeed?.checked) {
+      feed = { id: uid(), type: 'feed', t: entry.t, kind: 'pumped', pMl: entry.amt, amt: entry.amt, unit: entry.unit, note: 'Fed straight from pumping' };
+      op({ op: 'add', entry: feed });
+    }
+    toast(fl ? fl.msg : `Logged: ${detail(entry)}${feed ? ' (also added as a feeding)' : ''}`, fl ? 8000 : 7000,
+      { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (feed) op({ op: 'delete', id: feed.id }); } });
   }
 });
 
