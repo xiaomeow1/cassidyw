@@ -21,7 +21,9 @@
   --feed: #c94a78;   /* rose */
   --diaper: #3b82d6; /* powder blue */
   --note: #bd7a12;   /* honey */
-  --btn-feed: #b03a66; --btn-diaper: #2f6fc0; --btn-note: #8f5b0a; --on-btn: #ffffff;
+  --pump: #2a8f82;   /* teal */
+  --journal: #7c5fc4; /* violet */
+  --btn-feed: #b03a66; --btn-diaper: #2f6fc0; --btn-note: #8f5b0a; --btn-pump: #1f766b; --btn-journal: #6a4bb3; --on-btn: #ffffff;
   --accent: #b03a66;
   --good: #2e7d46;
   --warn: #8f5b0a;
@@ -34,8 +36,8 @@
     color-scheme: dark;
     --bg: #191214; --glow: #2b1a21; --surface: #241a1d; --ink: #f6ebee; --ink-2: #cdb9c0; --muted: #9a868d;
     --line: #382a2f; --chip: #2f2226; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.25);
-    --feed: #d45f8a; --diaper: #3987e5; --note: #c98500;
-    --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --on-btn: #1c1416; --accent: #d45f8a;
+    --feed: #d45f8a; --diaper: #3987e5; --note: #c98500; --pump: #3fb3a4; --journal: #9a86e6;
+    --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --btn-pump: #3fb3a4; --btn-journal: #9a86e6; --on-btn: #1c1416; --accent: #d45f8a;
     --good: #6fcf8f; --warn: #f0b429; --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a1d;
   }
 }
@@ -43,14 +45,15 @@
   color-scheme: dark;
   --bg: #191214; --glow: #2b1a21; --surface: #241a1d; --ink: #f6ebee; --ink-2: #cdb9c0; --muted: #9a868d;
   --line: #382a2f; --chip: #2f2226; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.25);
-  --feed: #d45f8a; --diaper: #3987e5; --note: #c98500;
-  --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --on-btn: #1c1416; --accent: #d45f8a;
+  --feed: #d45f8a; --diaper: #3987e5; --note: #c98500; --pump: #3fb3a4; --journal: #9a86e6;
+  --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --btn-pump: #3fb3a4; --btn-journal: #9a86e6; --on-btn: #1c1416; --accent: #d45f8a;
   --good: #6fcf8f; --warn: #f0b429; --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a1d;
 }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
   margin: 0; background: var(--bg) radial-gradient(120% 420px at 50% -60px, var(--glow), transparent) no-repeat; color: var(--ink);
   font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   padding: env(safe-area-inset-top) 16px calc(32px + env(safe-area-inset-bottom));
@@ -79,7 +82,7 @@ section { margin-top: 16px; }
 @media (min-width: 620px) { .hero { grid-template-columns: 1fr 1fr; } }
 .tracker .head { display: flex; align-items: center; gap: 8px; font-weight: 650; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.feed-c { background: var(--feed); } .diaper-c { background: var(--diaper); } .note-c { background: var(--note); }
+.feed-c { background: var(--feed); } .diaper-c { background: var(--diaper); } .note-c { background: var(--note); } .pump-c { background: var(--pump); } .journal-c { background: var(--journal); }
 .tracker .big { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin-top: 10px; font-variant-numeric: tabular-nums; }
 .tracker .sub { color: var(--ink-2); font-size: 14px; margin-top: 2px; }
 .next { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -115,7 +118,7 @@ details.more .tips { padding-top: 6px; }
 .actions { position: sticky; bottom: -18px; background: var(--surface); padding: 10px 0 2px; }
 
 .logbtn { width: 100%; margin-top: 14px; min-height: 50px; border: 0; border-radius: 14px; font-weight: 650; color: var(--on-btn); }
-.logbtn.feed-c { background: var(--btn-feed); } .logbtn.diaper-c { background: var(--btn-diaper); }
+.logbtn.feed-c { background: var(--btn-feed); } .logbtn.diaper-c { background: var(--btn-diaper); } .logbtn.pump-c { background: var(--btn-pump); } .logbtn.journal-c { background: var(--btn-journal); }
 .logbtn:active { filter: brightness(0.9); }
 
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -191,7 +194,34 @@ dialog h2 { font-size: 20px; }
 .actions { display: flex; gap: 10px; justify-content: flex-end; }
 .actions .btn { min-height: 48px; padding: 0 18px; }
 .actions .primary { background: var(--accent); color: var(--on-btn); border-color: var(--accent); font-weight: 650; }
-.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 10; max-width: calc(100vw - 32px); }
+.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 10; max-width: calc(100vw - 32px); }
+
+/* ---- tabs, edit, pumping, journal ---- */
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px rgba(150, 70, 100, .08); }
+.tabbar button { border: 0; background: transparent; padding: 6px 4px; border-radius: 12px; font-size: 12px; color: var(--ink-2); display: grid; gap: 2px; justify-items: center; }
+.tabbar button span { font-size: 20px; line-height: 1.1; }
+.tabbar button[aria-selected="true"] { color: var(--accent); font-weight: 700; background: var(--chip); }
+.view[hidden] { display: none; }
+.log li { grid-template-columns: auto 1fr auto; }
+.log .ed { border: 0; background: transparent; color: var(--muted); font-size: 18px; width: 40px; height: 40px; border-radius: 8px; }
+.log li[data-edit] { cursor: pointer; }
+.btn.danger { color: var(--crit); }
+textarea { width: 100%; resize: vertical; }
+.statusgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.statusgrid .btn { min-height: 64px; display: grid; gap: 2px; justify-items: center; align-content: center; font-size: 13px; }
+.statusgrid .btn span { font-size: 24px; line-height: 1; }
+.bars { display: grid; gap: 8px; }
+.bars .row { display: grid; grid-template-columns: 62px 1fr auto; gap: 10px; align-items: center; font-size: 13px; }
+.bars .track { height: 12px; border-radius: 6px; background: var(--chip); overflow: hidden; }
+.bars .track i { display: block; height: 100%; background: var(--pump); border-radius: 6px; }
+.bars .val { color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+table.meas { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.meas th, table.meas td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
+.pill2 { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--ink-2); margin: 2px 4px 2px 0; }
+.stat { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.stat:last-child { border-bottom: 0; }
+.stat span:first-child { color: var(--ink-2); }
 </style>
 </head>
 <body>
@@ -206,6 +236,7 @@ dialog h2 { font-size: 20px; }
 
   <div id="alerts"></div>
 
+  <div class="view" id="v-track">
   <div class="hero">
     <div class="card tracker" id="feedCard"></div>
     <div class="card tracker" id="diaperCard"></div>
@@ -263,16 +294,39 @@ dialog h2 { font-size: 20px; }
       <p class="fine">General guidance in line with AAP, CDC and NHS newborn advice. It's a reference, not medical advice. Your pediatrician and lactation consultant know her best.</p>
     </details>
   </section>
+  </div>
+
+  <div class="view" id="v-pump" hidden>
+    <div class="card tracker" id="pumpCard"></div>
+    <section><div class="sec-title">Last 24 hours</div><div class="tiles" id="pumpTiles"></div><p class="fine" id="pumpStash" style="margin:8px 2px 0"></p></section>
+    <section><div class="sec-title">Last 7 days</div><div class="card"><div class="bars" id="pumpBars"></div></div></section>
+    <section><div class="sec-title">Sessions</div><div class="card"><ul class="log" id="pumpLog"></ul></div></section>
+  </div>
+  <div class="view" id="v-journal" hidden>
+    <div class="card tracker" id="jStatus"></div>
+    <section><div class="sec-title">At a glance</div><div class="card" id="jGlance"></div></section>
+    <section><div class="sec-title">Measurements</div><div class="card" id="jMeas"></div></section>
+    <section><div class="sec-title">Journal</div><div class="card"><ul class="log" id="jLog"></ul></div></section>
+    <section><details class="card more-all"><summary style="cursor:pointer;font-weight:600">Newborn health basics</summary><div class="tips" id="jGuide" style="margin-top:12px"></div><p class="fine">General guidance, not medical advice. Your pediatrician knows her best.</p></details></section>
+  </div>
 </main>
+
+<nav class="tabbar" id="tabbar" aria-label="Sections">
+  <button data-view="track" aria-selected="true"><span>🍼</span>Track</button>
+  <button data-view="pump" aria-selected="false"><span>🥛</span>Pumping</button>
+  <button data-view="journal" aria-selected="false"><span>📖</span>Journal</button>
+</nav>
 
 <dialog id="cfgDlg"><form method="dialog" id="cfgForm">
   <h2>Settings</h2>
   <div class="field"><label class="l" for="cfgName">Baby's name</label><input type="text" id="cfgName" name="name" style="width:100%" autocomplete="off"></div>
   <div class="field"><label class="l" for="cfgBirth">Birth date &amp; time</label><input type="datetime-local" id="cfgBirth" name="birth" style="width:100%"></div>
+  <div class="field"><label class="l" for="cfgUnits">Volume units for feeds &amp; pumping</label>
+    <select id="cfgUnits" name="units" style="width:100%"><option value="auto">Auto: mL for the first 2 weeks, then oz</option><option value="ml">Always mL</option><option value="oz">Always oz</option></select></div>
   <div class="field"><label class="l" for="cfgUrl">Web app URL (from Apps Script → Deploy, ends in /exec, not the Sheet address)</label><input type="text" id="cfgUrl" name="url" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
   <div class="field"><label class="l" for="cfgKey">Secret key</label><input type="password" id="cfgKey" name="key" style="width:100%" autocomplete="off"></div>
   <p class="fine" style="margin:0">Name and birth time are saved to your Sheet, not to the website's code.</p>
-  <div class="actions"><button class="btn" value="disconnect" formnovalidate id="cfgOff">Disconnect</button><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>
+  <div class="actions" style="position:static"><button class="btn" value="disconnect" formnovalidate id="cfgOff">Disconnect</button><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>
 </form></dialog>
 <dialog id="sheet"><form method="dialog" id="sheetForm"></form></dialog>
 <div class="toast" id="toast" hidden></div>
@@ -283,7 +337,7 @@ dialog h2 { font-size: 20px; }
 let BIRTH = Date.now(), NAME = 'Baby';
 const H = 3600e3, M = 60e3;
 const FEED_SLOTS = 4, DIAPER_SLOTS = 3;
-const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1';
+const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1', LS_VIEW = 'newborn-view-v1';
 
 const FEED_PARTS = [['breast', 'Breast'], ['formula', 'Formula'], ['pumped', 'Pumped milk']];
 const SIDES = [['L', 'Left'], ['R', 'Right']];
@@ -295,6 +349,21 @@ const COLORS = [
   ['red','Red / bloody','#b3261e'], ['white','White / pale gray','#d9d6cc'],
 ];
 const NOTE_KINDS = [['spitup','Spit-up'],['vomit','Vomit'],['other','Other note']];
+const STORE = [['fridge', 'Fridge'], ['freezer', 'Freezer'], ['discarded', 'Discarded / spilled']];
+const STATUS = [['content', '😊', 'Content'], ['sleepy', '😴', 'Sleepy'], ['alert', '👀', 'Alert'], ['fussy', '😣', 'Fussy'], ['gassy', '💨', 'Gassy'], ['unwell', '🤒', 'Unwell']];
+const TAGS = [['jaundice', 'Jaundice'], ['rash', 'Rash'], ['congestion', 'Congestion'], ['cord', 'Cord stump'], ['cluster', 'Cluster feeding'], ['bath', 'Bath'], ['skin', 'Skin-to-skin'], ['tummy', 'Tummy time'], ['doctor', 'Doctor visit'], ['milestone', 'Milestone']];
+const TAG_TIPS = {
+  jaundice: 'Yellow skin or eyes usually peaks around days 3–5. Call if it spreads, deepens, or she is very sleepy and feeding poorly.',
+  rash: 'Baby acne and small rashes are common. Call if a rash comes with fever, or looks like blisters or dark spots.',
+  congestion: 'Stuffy noses are common. Saline drops and gentle suction before feeds help. Call right away for trouble breathing.',
+  cord: 'Keep the stump dry and fold the diaper below it. Call for redness, pus or a bad smell.',
+  cluster: 'Back-to-back feeding is normal, especially in the evening and during growth spurts.',
+  bath: 'Stick to sponge baths until the cord stump falls off.',
+  skin: 'Great for bonding and warmth, and it can help feeding.',
+  tummy: 'Only while she is awake and watched: a few minutes at a time.',
+  doctor: 'Bring this journal. Good things to ask about: weight, feeding, vitamin D, and anything you noted here.',
+  milestone: 'Lovely. Writing it down now means you will not forget it.',
+};
 const CONS = [['seedy','Seedy / soft'],['pasty','Pasty'],['loose','Loose'],['watery','Watery'],['formed','Soft formed'],['pellets','Hard pellets']];
 
 /* ---------- state ---------- */
@@ -317,6 +386,27 @@ function dur(ms) {
 }
 const dayOfLife = t => Math.max(1, Math.floor((t - BIRTH) / (24 * H)) + 1);
 
+/* ---------- units ----------
+   Amounts are always stored in mL (weights in g, lengths in cm, temperatures in °C) so totals stay correct.
+   Each entry remembers the unit it was entered in, and that unit is what it displays and edits in. */
+const ML_OZ = 29.5735, round1 = v => Math.round(v * 10) / 10, round2 = v => Math.round(v * 100) / 100;
+// Newborn volumes are tiny and hospitals measure in mL, so "auto" starts in mL and switches to oz after 2 weeks.
+function defaultUnit(type) {
+  const u = state.settings.units;
+  if (u === 'ml' || u === 'oz') return u;
+  return type === 'note' || (Date.now() - (state.settings.birthMs || Date.now())) / (24 * H) < 14 ? 'ml' : 'oz';
+}
+const toMl = (v, u) => u === 'oz' ? Math.round(v * ML_OZ) : Math.round(v);
+const fromMl = (ml, u) => u === 'oz' ? round1(ml / ML_OZ) : Math.round(ml);
+const fmtVol = (ml, u) => u === 'oz' ? `${round1(ml / ML_OZ)} oz` : `${Math.round(ml)} mL`;
+const fmtWeight = (g, sys) => {
+  if (sys === 'metric') return `${(g / 1000).toFixed(2)} kg`;
+  const oz = round1(g / 28.3495), lb = Math.floor(oz / 16);
+  return `${lb} lb ${round1(oz - lb * 16)} oz`;
+};
+const fmtLen = (cm, sys) => sys === 'metric' ? `${round1(cm)} cm` : `${round1(cm / 2.54)} in`;
+const fmtTemp = (c, sys) => sys === 'metric' ? `${round1(c)}°C` : `${round1(c * 9 / 5 + 32)}°F`;
+
 function loadLocal() { try { return JSON.parse(localStorage.getItem(LS)); } catch { return null; } }
 function saveLocal() { try { localStorage.setItem(LS, JSON.stringify(state)); } catch {} }
 
@@ -337,6 +427,7 @@ async function api(action, payload = {}) {
 
 function applyLocal(o) {
   if (o.op === 'add') { if (!state.logs.some(l => l.id === o.entry.id)) state.logs.push(o.entry); }
+  else if (o.op === 'update') { const i = state.logs.findIndex(l => l.id === o.entry.id); if (i >= 0) state.logs[i] = o.entry; else state.logs.push(o.entry); }
   else if (o.op === 'delete') state.logs = state.logs.filter(l => l.id !== o.id);
   else if (o.op === 'settings') Object.assign(state.settings, o.settings);
 }
@@ -466,21 +557,51 @@ const colorHex = k => (COLORS.find(c => c[0] === k) || [])[2];
 const consName = k => (CONS.find(c => c[0] === k) || [])[1];
 const kindName = (list, k) => (list.find(c => c[0] === k) || [])[1] || k;
 
+function tempInfo(c) {
+  if (c >= 38) return { level: 'call', text: 'A temperature of 100.4°F (38°C) or higher in a baby this young needs a call to the pediatrician right away.' };
+  if (c < 36.4) return { level: 'call', text: 'A temperature below 97.5°F (36.4°C) in a newborn: call the pediatrician.' };
+  return { level: 'ok', text: 'In the normal range. A rectal reading is the most accurate for newborns (about 97.5–100.3°F).' };
+}
 function flagFor(e) {
   if (e.type === 'note' && e.kind === 'vomit') return { level: 'watch', msg: 'Vomiting: call the pediatrician if it is forceful (shoots out), green or yellow-green, bloody, or keeps happening after feeds.' };
+  if (e.type === 'journal') {
+    if (e.tempC != null) { const t = tempInfo(e.tempC); if (t.level !== 'ok') return { level: t.level, msg: t.text }; }
+    if (e.status === 'unwell') return { level: 'watch', msg: "Marked as unwell. Check her temperature, and call the pediatrician if you're worried." };
+    return null;
+  }
   return stoolFlag(e);
 }
+// First-version feeds stored "breast-l" etc. with minutes or oz in one field: read them as the current shape.
+// "formula" and "pumped" are also valid current kinds, so an entry only counts as first-version if it has no mL fields or unit.
+const isLegacyFeed = e => !!LEGACY_FEED[e.kind] && e.fMl == null && e.pMl == null && !e.unit;
+function normFeed(e) {
+  if (!isLegacyFeed(e)) return e;
+  const n = { ...e };
+  if (e.kind.startsWith('breast')) { n.kind = 'breast'; n.sides = e.kind.slice(-1).toUpperCase(); n.min = e.amt; delete n.amt; }
+  else { const ml = Math.round((e.amt || 0) * ML_OZ); if (e.kind === 'formula') n.fMl = ml; else n.pMl = ml; n.amt = ml; n.unit = 'oz'; }
+  return n;
+}
+const statusOf = k => STATUS.find(x => x[0] === k);
 function detail(e) {
-  if (e.type === 'note') return kindName(NOTE_KINDS, e.kind) + (e.amt ? ` · ${e.amt} mL` : '');
+  if (e.type === 'note') return kindName(NOTE_KINDS, e.kind) + (e.amt ? ` · ${fmtVol(e.amt, e.unit)}` : '');
+  if (e.type === 'pump') {
+    const st = STORE.find(x => x[0] === e.store);
+    return [e.dur ? `${e.dur} min` : null, e.amt ? `${fmtVol(e.amt, e.unit)} total` : null, e.lMl || e.rMl ? `L ${fmtVol(e.lMl || 0, e.unit)} · R ${fmtVol(e.rMl || 0, e.unit)}` : null, st ? st[1] : null].filter(Boolean).join(' · ') || 'Pumping session';
+  }
+  if (e.type === 'journal') {
+    const st = statusOf(e.status), tags = String(e.tags || '').split(',').filter(Boolean).map(t => (TAGS.find(x => x[0] === t) || [, t])[1]);
+    return [st ? `${st[1]} ${st[2]}` : null, ...tags,
+      e.wtG ? fmtWeight(e.wtG, e.sys) : null, e.lenCm ? fmtLen(e.lenCm, e.sys) : null, e.headCm ? `head ${fmtLen(e.headCm, e.sys)}` : null, e.tempC != null ? fmtTemp(e.tempC, e.sys) : null].filter(Boolean).join(' · ') || 'Journal note';
+  }
   if (e.type === 'feed') {
-    if (LEGACY_FEED[e.kind]) return LEGACY_FEED[e.kind] + (e.amt ? ` · ${e.amt}${e.kind.startsWith('breast') ? ' min' : ' oz'}` : '');
-    const parts = String(e.kind).split(',').map(k => {
-      if (k === 'breast') return 'Breast' + (e.sides ? ` (${e.sides.split('').join('+')})` : '') + (e.min ? ` ${e.min} min` : '');
-      if (k === 'formula') return 'Formula' + (e.fMl ? ` ${e.fMl} mL` : '');
-      if (k === 'pumped') return 'Pumped' + (e.pMl ? ` ${e.pMl} mL` : '');
+    const n = normFeed(e), u = n.unit;
+    const parts = String(n.kind).split(',').map(k => {
+      if (k === 'breast') return 'Breast' + (n.sides ? ` (${n.sides.split('').join('+')})` : '') + (n.min ? ` ${n.min} min` : '');
+      if (k === 'formula') return 'Formula' + (n.fMl ? ` ${fmtVol(n.fMl, u)}` : '');
+      if (k === 'pumped') return 'Pumped' + (n.pMl ? ` ${fmtVol(n.pMl, u)}` : '');
       return k;
     });
-    return parts.join(' + ') + (e.fMl && e.pMl ? ` · bottle total ${e.fMl + e.pMl} mL` : '');
+    return parts.join(' + ') + (n.fMl && n.pMl ? ` · bottle total ${fmtVol(n.fMl + n.pMl, u)}` : '');
   }
   return kindName(DIAPER_KINDS, e.kind) + (e.kind !== 'wet' && e.color ? ` · ${colorName(e.color)}` : '') + (e.cons ? `, ${consName(e.cons)}` : '');
 }
@@ -503,6 +624,8 @@ function render() {
   renderNow(d);
   $('#moreGuide').innerHTML = TIPS.rhythm + TIPS.call;
   renderCal();
+  renderPump(now);
+  renderJournal(now);
 }
 
 function renderAlerts(now) {
@@ -530,12 +653,12 @@ function heroCard(el, cls, title, list, iv, actions, tip, more) {
 
 // What a one-tap "same as last" feed would record: same milk, opposite breast side.
 function repeatEntry(last) {
-  if (!last || LEGACY_FEED[last.kind]) return null;
-  const e = { type: 'feed', kind: last.kind };
-  if (last.sides) e.sides = last.sides.length === 1 ? (last.sides === 'L' ? 'R' : 'L') : last.sides;
-  if (last.fMl) e.fMl = last.fMl;
-  if (last.pMl) e.pMl = last.pMl;
-  if (e.fMl || e.pMl) e.amt = (e.fMl || 0) + (e.pMl || 0);
+  if (!last) return null;
+  const n = normFeed(last), e = { type: 'feed', kind: n.kind };
+  if (n.sides) e.sides = n.sides.length === 1 ? (n.sides === 'L' ? 'R' : 'L') : n.sides;
+  if (n.fMl) e.fMl = n.fMl;
+  if (n.pMl) e.pMl = n.pMl;
+  if (e.fMl || e.pMl) { e.amt = (e.fMl || 0) + (e.pMl || 0); if (n.unit) e.unit = n.unit; }
   return e;
 }
 function counts24(now) {
@@ -567,10 +690,10 @@ function renderTiles(now, d) {
   const { feeds, wet, dirty } = counts24(now);
   const tile = (k, v, goal, ok) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">goal ${goal}</div><div class="st ${ok ? 'ok' : 'low'}">${ok ? '✓ On track' : 'Below goal so far'}</div></div>`;
   const spits = recent.filter(l => l.type === 'note' && l.kind !== 'other'), ml = spits.reduce((a, l) => a + (l.amt || 0), 0);
-  const bottle = recent.filter(l => l.type === 'feed' && !LEGACY_FEED[l.kind]);
+  const bottle = recent.filter(l => l.type === 'feed').map(normFeed), bu = defaultUnit('feed');
   const fSum = bottle.reduce((a, l) => a + (l.fMl || 0), 0), pSum = bottle.reduce((a, l) => a + (l.pMl || 0), 0);
-  const bottleLine = fSum + pSum ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Bottle milk: ${fSum + pSum} mL (formula ${fSum} · pumped ${pSum}). Breast not counted.</div>` : '';
-  const extra = bottleLine + (spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${Math.round(ml)} mL lost` : ''}</div>` : '');
+  const bottleLine = fSum + pSum ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Bottle milk: ${fmtVol(fSum + pSum, bu)} (formula ${fmtVol(fSum, bu)} · pumped ${fmtVol(pSum, bu)}). Breast not counted.</div>` : '';
+  const extra = bottleLine + (spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${fmtVol(ml, defaultUnit('note'))} lost` : ''}</div>` : '');
   $('#tiles').innerHTML = extra + tile('Feedings', feeds, '8–12', feeds >= 8) + tile('Wet diapers', wet, wetGoal(d) + '+', wet >= wetGoal(d)) + tile('Dirty diapers', dirty, dirtyGoal(d) + '+', dirty >= dirtyGoal(d));
 }
 
@@ -580,7 +703,7 @@ function renderTimeline(now) {
   const t0 = now - 24 * H, t1 = now + 6 * H, x = t => padX + (t - t0) / (t1 - t0) * (w - 2 * padX);
   const rows = { feed: 56, diaper: 108, note: 160 };
   tlItems = [];
-  state.logs.filter(l => l.t >= t0 && l.t <= t1).forEach(l => tlItems.push({ x: x(l.t), y: rows[l.type], type: l.type, pred: false, tip: `${fmtWhen(l.t)} · ${detail(l)}` }));
+  state.logs.filter(l => rows[l.type] && l.t >= t0 && l.t <= t1).forEach(l => tlItems.push({ x: x(l.t), y: rows[l.type], type: l.type, pred: false, tip: `${fmtWhen(l.t)} · ${detail(l)}` }));
   buildSlots().forEach(s => { if (s.start <= t1) tlItems.push({ x: x(s.start), y: rows[s.kind], type: s.kind, pred: true, tip: `≈ ${fmtWhen(s.start)} · predicted` }); });
   let svg = `<svg viewBox="0 0 ${w} ${h}" height="${h}" role="img" aria-label="Timeline of feedings and diaper changes over the last 24 hours">`;
   svg += `<text x="${padX}" y="${rows.feed - 22}">Feedings</text><text x="${padX}" y="${rows.diaper - 22}">Diapers</text><text x="${padX}" y="${rows.note - 22}">Spit-up / notes</text>`;
@@ -616,14 +739,18 @@ function renderSchedule(now) {
   $('#sched').innerHTML = list('feed', '🍼 Next feedings') + list('diaper', '💧 Next diaper checks');
 }
 
-function renderLog() {
-  const items = [...state.logs].sort((a, b) => b.t - a.t).slice(0, 40);
-  $('#log').innerHTML = items.length ? items.map(l => {
+const DOT = { feed: 'feed-c', diaper: 'diaper-c', note: 'note-c', pump: 'pump-c', journal: 'journal-c' };
+function entryRows(items, empty) {
+  return items.length ? items.map(l => {
     const f = flagFor(l), hex = l.type === 'diaper' && l.color ? colorHex(l.color) : null;
-    return `<li><span class="t">${fmtWhen(l.t)}</span>
-      <span class="d"><i class="dot ${{ feed: 'feed-c', diaper: 'diaper-c', note: 'note-c' }[l.type]}" style="display:inline-block;margin-right:8px"></i>${hex ? `<span class="swatch" style="background:${hex}"></span>` : ''}${esc(detail(l))}${f ? `<span class="flag ${f.level}">${f.level === 'call' ? 'CALL DR' : 'WATCH'}</span>` : ''}${l.note ? `<small>${esc(l.note)}</small>` : ''}</span>
-      <button class="x" data-del="${l.id}" aria-label="Delete entry">×</button></li>`;
-  }).join('') : '<li class="empty">No entries yet. Tap “Log feeding” or “Log diaper change” above.</li>';
+    return `<li data-edit="${l.id}"><span class="t">${fmtWhen(l.t)}</span>
+      <span class="d"><i class="dot ${DOT[l.type]}" style="display:inline-block;margin-right:8px"></i>${hex ? `<span class="swatch" style="background:${hex}"></span>` : ''}${esc(detail(l))}${f ? `<span class="flag ${f.level}">${f.level === 'call' ? 'CALL DR' : 'WATCH'}</span>` : ''}${l.note ? `<small>${esc(l.note)}</small>` : ''}</span>
+      <button class="ed" data-edit="${l.id}" aria-label="Edit entry">✎</button></li>`;
+  }).join('') : `<li class="empty">${empty}</li>`;
+}
+function renderLog() {
+  const items = state.logs.filter(l => l.type === 'feed' || l.type === 'diaper' || l.type === 'note').sort((a, b) => b.t - a.t).slice(0, 40);
+  $('#log').innerHTML = entryRows(items, 'No entries yet. Tap “Log feeding” or one of the diaper buttons above.');
 }
 
 function renderMode() {
@@ -663,88 +790,257 @@ function downloadIcs() {
   a.download = 'baby-schedule.ics'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
-/* ---------- log sheets: smart defaults, chips instead of typing, live tips ---------- */
+/* ---------- log sheets: smart defaults, chips instead of typing, live tips, edit mode ---------- */
 const chips = (name, opts, sel, type = 'radio') => `<div class="chips">${opts.map(o => `<label><input type="${type}" name="${name}" value="${o[0]}" ${(Array.isArray(sel) ? sel.includes(o[0]) : o[0] === sel) ? 'checked' : ''}><span>${o[2] ? `<i class="swatch" style="background:${o[2]}"></i>` : ''}${o[1]}</span></label>`).join('')}</div>`;
 const localInput = t => { const d = new Date(t - new Date(t).getTimezoneOffset() * M); return d.toISOString().slice(0, 16); };
 const AGO = [['0', 'Just now'], ['5', '5 min'], ['10', '10 min'], ['15', '15 min'], ['30', '30 min'], ['60', '1 h'], ['custom', 'Other…']];
-const whenField = now => `<div class="field"><label class="l">When (how long ago?)</label>${chips('ago', AGO, '0')}<input type="datetime-local" name="when" value="${localInput(now)}" max="${localInput(now + H)}" hidden style="width:100%;margin-top:8px"></div>`;
-const noteField = ph => `<details class="addnote"><summary>＋ Add a note</summary><input type="text" name="note" placeholder="${ph}" style="width:100%"></details>`;
-const stepper = (name, val, step) => `<div class="step"><button type="button" class="btn" data-step="${-step}" data-for="${name}" aria-label="Less">−</button><input type="number" name="${name}" id="${name}" min="0" step="any" inputmode="decimal" value="${val ?? ''}"><button type="button" class="btn" data-step="${step}" data-for="${name}" aria-label="More">+</button></div>`;
+const whenField = (now, editT) => editT
+  ? `<div class="field"><label class="l" for="when">When</label><input type="datetime-local" name="when" id="when" value="${localInput(editT)}" max="${localInput(Date.now() + H)}" style="width:100%"></div>`
+  : `<div class="field"><label class="l">When (how long ago?)</label>${chips('ago', AGO, '0')}<input type="datetime-local" name="when" value="${localInput(now)}" max="${localInput(now + H)}" hidden style="width:100%;margin-top:8px"></div>`;
+const noteField = (ph, v = '') => `<details class="addnote" ${v ? 'open' : ''}><summary>＋ Add a note</summary><input type="text" name="note" value="${esc(v)}" placeholder="${ph}" style="width:100%"></details>`;
+// o = { ml: 10 } steps a volume (10 mL, or 0.5 oz in oz); o = { fix: 5 } is a plain step.
+const stepper = (name, val, o) => { const at = o.ml ? `data-stepml="${o.ml}"` : `data-stepfix="${o.fix}"`; return `<div class="step"><button type="button" class="btn" data-for="${name}" data-dir="-1" ${at} aria-label="Less">−</button><input type="number" name="${name}" id="${name}" min="0" step="any" inputmode="decimal" value="${val ?? ''}"><button type="button" class="btn" data-for="${name}" data-dir="1" ${at} aria-label="More">+</button></div>`; };
+const unitField = u => `<div class="field" id="secUnit"><label class="l">Unit</label>${chips('unit', [['ml', 'mL'], ['oz', 'oz']], u)}</div>`;
 const ctxHtml = list => list.map(x => `<div class="ctx ${x.level}">${x.text}</div>`).join('');
-const actionsHtml = `<div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
+const actionsHtml = isEdit => `<div class="actions">${isEdit ? '<button class="btn danger" value="delete" formnovalidate>Delete</button>' : ''}<button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
 function readWhen(f) {
+  if (!f.elements.ago) { const t = new Date(f.elements.when.value).getTime(); return isNaN(t) ? Date.now() : t; }
   if (f.elements.ago.value === 'custom') { const t = new Date(f.elements.when.value).getTime(); return isNaN(t) ? Date.now() : t; }
   return Date.now() - (+f.elements.ago.value) * M;
 }
 // Typical bottle volume per feed (mL) by day of life.
 const bottleRange = d => d <= 2 ? [15, 30] : d <= 7 ? [30, 60] : d <= 28 ? [60, 90] : [90, 120];
+// The exact stored mL is remembered on the field, so switching units to look at a number doesn't change it.
+const readMl = (el, u) => { const v = parseFloat(el.value); if (isNaN(v)) return 0; const c = +el.dataset.ml; return c && fromMl(c, u) === v ? c : toMl(v, u); };
+const unitName = u => u === 'oz' ? 'oz' : 'mL';
+const volRange = (a, b, u) => `${fmtVol(a, u).replace(/ (mL|oz)$/, '')}–${fmtVol(b, u)}`;
+const setErr = m => { $('#ferr').textContent = m; $('#ferr').hidden = false; };
 
+const BUILDERS = {
+  feed(ed, at, d) {
+    const src = ed ? normFeed(ed) : null;
+    const last = byType('feed').filter(l => !ed || l.id !== ed.id).pop(), lastN = last && normFeed(last), rep = repeatEntry(last);
+    const unit = src?.unit || defaultUnit('feed'), r = bottleRange(d), mid = Math.round((r[0] + r[1]) / 2 / 5) * 5;
+    const parts = src ? String(src.kind).split(',') : rep ? rep.kind.split(',') : ['breast'];
+    const sides = src ? (src.sides || '').split('').filter(Boolean) : rep?.sides ? rep.sides.split('') : ['L'];
+    const fv = src ? (src.fMl ? fromMl(src.fMl, unit) : '') : fromMl(lastN?.fMl ?? mid, unit);
+    const pv = src ? (src.pMl ? fromMl(src.pMl, unit) : '') : fromMl(lastN?.pMl ?? mid, unit);
+    const mins = [...new Set(['5', '10', '15', '20', '30', ...(src?.min ? [String(src.min)] : [])])].sort((a, b) => a - b);
+    return {
+      title: '🍼 Log feeding', vol: ['fMl', 'pMl'], canon: { fMl: src?.fMl, pMl: src?.pMl },
+      body: `<div class="field"><label class="l">What did she have? (pick all that apply)</label>${chips('parts', FEED_PARTS, parts, 'checkbox')}<div id="ctxTiming"></div></div>
+        <div class="field" id="secBreast"><label class="l">Breast side(s)</label>${chips('sides', SIDES, sides, 'checkbox')}
+          <label class="l" style="margin-top:12px">Minutes (optional)</label>${chips('min', [['', 'Skip'], ...mins.map(m => [m, m])], src?.min ? String(src.min) : '')}<div id="ctxBreast"></div></div>
+        ${unitField(unit)}
+        <div class="field" id="secFormula"><label class="l">Formula</label>${stepper('fMl', fv, { ml: 10 })}<div id="ctxFormula"></div></div>
+        <div class="field" id="secPumped"><label class="l">Pumped milk</label>${stepper('pMl', pv, { ml: 10 })}<div id="ctxPumped"></div></div>
+        <div class="callout" id="bottleTotal" style="margin:0"></div>
+        ${whenField(at, ed && at)}${noteField('latched well, sleepy…', ed?.note)}`,
+      update(f) {
+        const on = k => f.querySelector(`input[name=parts][value=${k}]`).checked, u = f.elements.unit.value;
+        $('#secBreast').hidden = !on('breast'); $('#secFormula').hidden = !on('formula'); $('#secPumped').hidden = !on('pumped');
+        $('#secUnit').hidden = !(on('formula') || on('pumped'));
+        const fm = on('formula') ? +f.elements.fMl.value || 0 : 0, pm = on('pumped') ? +f.elements.pMl.value || 0 : 0, tot = fm + pm;
+        $('#bottleTotal').hidden = !(on('formula') || on('pumped'));
+        $('#bottleTotal').innerHTML = `<b>Bottle total: ${round1(tot)} ${unitName(u)}</b>Breast isn't counted in the total.` +
+          (toMl(tot, u) > r[1] * 1.5 ? `<div class="ctx watch">${round1(tot)} ${unitName(u)} is above the usual amount for day ${d}. Bigger volumes can bring more spit-up: offer less and let her ask for more.</div>` : '');
+        const timing = ed ? null : feedTiming();
+        $('#ctxTiming').innerHTML = timing ? ctxHtml([{ level: 'ok', text: timing }]) : '';
+        $('#ctxBreast').innerHTML = ctxHtml([{ level: 'ok', text: 'Start on the side she finished on last time. A good latch: wide mouth, lips flanged out, steady swallowing. After a C-section, football hold or side-lying keeps weight off your incision.' }]);
+        $('#ctxFormula').innerHTML = ctxHtml([{ level: 'ok', text: `Typical on day ${d}: ${volRange(r[0], r[1], u)} per feed. Pace the bottle, stop at fullness cues, toss leftovers after 1 hour.` }]);
+        $('#ctxPumped').innerHTML = ctxHtml([{ level: 'ok', text: 'Room temperature up to 4 h · fridge 4 days · freezer about 6 months. Warm in a bowl of warm water and swirl, don\'t shake.' }]);
+      },
+      collect(f, entry) {
+        const el = f.elements, u = el.unit.value, parts = [...f.querySelectorAll('input[name=parts]:checked')].map(i => i.value);
+        if (!parts.length) return 'Pick breast, formula or pumped milk.';
+        entry.kind = parts.join(',');
+        if (parts.includes('breast')) {
+          entry.sides = [...f.querySelectorAll('input[name=sides]:checked')].map(i => i.value).join('') || undefined;
+          entry.min = parseFloat(el.min.value) || undefined;
+        }
+        if (parts.includes('formula')) entry.fMl = readMl(el.fMl, u) || undefined;
+        if (parts.includes('pumped')) entry.pMl = readMl(el.pMl, u) || undefined;
+        entry.amt = (entry.fMl || 0) + (entry.pMl || 0) || undefined;   // bottle total only, never breast
+        if (entry.amt) entry.unit = u;
+      },
+    };
+  },
+
+  note(ed, at, d) {
+    const unit = ed?.unit || defaultUnit('note');
+    return {
+      title: '📝 Spit-up or note', vol: ['amt'], canon: { amt: ed?.amt },
+      body: `<div class="field"><label class="l">What happened?</label>${chips('kind', NOTE_KINDS, ed?.kind || 'spitup')}<div id="ctx"></div></div>
+        <div class="field" id="secSize"><label class="l">How much? (tap to save)</label><div class="sizes">
+          <button class="btn" value="save" data-ml="5">A little<small>≈ 5 mL · teaspoon</small></button>
+          <button class="btn" value="save" data-ml="15">Some<small>≈ 15 mL · tablespoon</small></button>
+          <button class="btn" value="save" data-ml="30">A lot<small>≈ 30 mL · 2 tbsp</small></button></div>
+          <label class="l" style="margin-top:12px">Or exact amount</label>${unitField(unit).replace('<div class="field" id="secUnit"><label class="l">Unit</label>', '<div id="secUnit">')}${stepper('amt', ed?.amt ? fromMl(ed.amt, unit) : '', { ml: 5 })}</div>
+        ${whenField(at, ed && at)}<div class="field"><label class="l">Note</label><input type="text" name="note" value="${esc(ed?.note || '')}" placeholder="right after feeding, gassy, fussy…" style="width:100%"></div>`,
+      update(f) {
+        const k = f.elements.kind.value;
+        $('#secSize').hidden = k === 'other';
+        $('#ctx').innerHTML = ctxHtml([k === 'vomit'
+          ? { level: 'watch', text: '<b>Vomit</b> is larger or forceful. Call the pediatrician if it shoots out, is green or yellow-green, bloody, keeps happening after feeds, or comes with fever, a swollen belly, fewer wet diapers or poor feeding.' }
+          : k === 'spitup' ? { level: 'ok', text: '<b>Spit-up</b> is common: a small, effortless dribble during or after feeds, usually 5–15 mL. It often looks like more than it is. Burp mid-feed and hold her upright for 15–20 minutes afterwards.' }
+          : { level: 'ok', text: 'Anything worth remembering for the pediatrician: fussiness, rash, sleepiness, a temperature reading.' }]);
+      },
+      collect(f, entry, btn) {
+        const el = f.elements, u = el.unit.value;
+        entry.kind = el.kind.value;
+        if (entry.kind !== 'other') { entry.amt = (btn?.dataset.ml ? +btn.dataset.ml : readMl(el.amt, u)) || undefined; if (entry.amt) entry.unit = u; }
+      },
+    };
+  },
+
+  diaper(ed, at, d, opts) {
+    const last = byType('feed').pop();
+    const color = ed?.color || (d <= 2 ? 'black' : d === 3 ? 'darkgreen' : d === 4 ? 'green' : 'yellow');
+    const cons = ed?.cons || (d <= 2 ? 'pasty' : last && String(normFeed(last).kind).split(',').every(k => k !== 'breast') ? 'pasty' : 'seedy');
+    return {
+      title: '💧 Diaper change',
+      body: `<div class="field"><label class="l">What was in it?</label>${chips('kind', DIAPER_KINDS, ed?.kind || opts.kind || 'dirty')}<div id="ctxCount"></div></div>
+        <div id="poop">
+          <div class="field"><label class="l">Color${ed ? '' : ` (typical for day ${d} is pre-selected)`}</label>${chips('color', COLORS, color)}<div id="ctxColor"></div></div>
+          <div class="field" style="margin-top:14px"><label class="l">Consistency</label>${chips('cons', CONS, cons)}<div id="ctxCons"></div></div>
+        </div>
+        ${whenField(at, ed && at)}${noteField('rash, diaper cream…', ed?.note)}`,
+      update(f) {
+        const k = f.elements.kind.value, c = counts24(Date.now());
+        $('#poop').hidden = k === 'wet';
+        $('#ctxColor').innerHTML = ctxHtml(stoolInfo(f.elements.color.value, '', d)); $('#ctxCons').innerHTML = ctxHtml(stoolInfo('', f.elements.cons.value, d));
+        $('#ctxCount').innerHTML = ctxHtml([{ level: 'ok', text: `Last 24 h: ${c.wet} wet, ${c.dirty} dirty. Goal today: ${wetGoal(d)}+ wet, ${dirtyGoal(d)}+ dirty.` }]);
+      },
+      collect(f, entry) {
+        entry.kind = f.elements.kind.value;
+        if (entry.kind !== 'wet') { entry.color = f.elements.color.value || undefined; entry.cons = f.elements.cons.value || undefined; }
+      },
+    };
+  },
+
+  pump(ed, at, d) {
+    const last = byType('pump').filter(l => !ed || l.id !== ed.id).pop();
+    const unit = ed?.unit || defaultUnit('pump'), step = d <= 5 ? 5 : 10;
+    const v = (ml) => ml ? fromMl(ml, unit) : '';
+    const src = ed || {};
+    const expect = u => d <= 2 ? 'Just drops to a few mL of colostrum is normal and valuable. Hand expression can work better than the pump at first.'
+      : d <= 5 ? `Milk usually comes in around now (sometimes later after a C-section). Amounts often climb from a few mL to ${volRange(15, 60, u)} a session.`
+      : d <= 14 ? `Roughly ${volRange(30, 120, u)} across both sides per session is common by the end of week 2, but the normal range is wide.`
+      : 'Totals vary a lot between people and through the day. Your own trend matters more than any target.';
+    const since = last ? Date.now() - last.t : 0;
+    return {
+      title: '🥛 Pumping session', vol: ['tot', 'lMl', 'rMl'], canon: { tot: src.amt, lMl: src.lMl, rMl: src.rMl },
+      body: `<div class="field"><label class="l">Duration, minutes</label>${stepper('dur', src.dur ?? last?.dur ?? 15, { fix: 5 })}<div id="ctxDur"></div></div>
+        ${unitField(unit)}
+        <div class="field"><label class="l">Total pumped</label>${stepper('tot', v(src.amt ?? last?.amt), { ml: step * 2 })}<div id="ctxVol"></div></div>
+        <details class="addnote" ${src.lMl || src.rMl ? 'open' : ''}><summary>＋ Split by left / right</summary>
+          <div class="field"><label class="l">Left</label>${stepper('lMl', v(src.lMl), { ml: step })}</div>
+          <div class="field"><label class="l">Right</label>${stepper('rMl', v(src.rMl), { ml: step })}</div></details>
+        <div class="field"><label class="l">Where did it go?</label>${chips('store', STORE, src.store ?? last?.store ?? 'fridge')}<div id="ctxStore"></div></div>
+        ${whenField(at, ed && at)}${noteField('let-down, comfort, flange size…', ed?.note)}`,
+      update(f, ev) {
+        const u = f.elements.unit.value, tgt = ev?.target?.name;
+        if (tgt === 'lMl' || tgt === 'rMl') f.elements.tot.value = round1((+f.elements.lMl.value || 0) + (+f.elements.rMl.value || 0));
+        const ctx = [];
+        if (!ed && since > 4 * H) ctx.push({ level: 'watch', text: `It has been ${dur(since)} since the last session. Early on, try to pump at least every 3–4 hours.` });
+        $('#ctxDur').innerHTML = ctxHtml([...ctx, { level: 'ok', text: 'About 15–20 minutes, or until milk has stopped flowing for about 2 minutes. Early on, 8 sessions in 24 hours (including one overnight) helps build supply.' }]);
+        $('#ctxVol').innerHTML = ctxHtml([{ level: 'ok', text: expect(u) }]);
+        $('#ctxStore').innerHTML = ctxHtml([{ level: 'ok', text: f.elements.store.value === 'discarded' ? "Discarded milk isn't counted in your estimated stash." : 'Fridge up to 4 days · freezer about 6 months. Label with the date and use the oldest first.' }]);
+      },
+      collect(f, entry) {
+        const el = f.elements, u = el.unit.value, n = k => parseFloat(el[k].value) || 0;
+        entry.dur = n('dur') || undefined;
+        const l = readMl(el.lMl, u), r = readMl(el.rMl, u), total = l + r || readMl(el.tot, u);
+        if (!total && !entry.dur) return 'Add the amount or the duration.';
+        entry.lMl = l || undefined; entry.rMl = r || undefined; entry.amt = total || undefined;
+        entry.unit = u; entry.store = el.store.value || undefined;
+      },
+    };
+  },
+
+  journal(ed, at, d) {
+    const src = ed || {}, sys0 = src.sys || 'us';
+    const hasM = !!(src.wtG || src.lenCm || src.headCm || src.tempC != null);
+    const tags = String(src.tags || '').split(',').filter(Boolean);
+    let curSys = sys0;
+    const first = state.logs.filter(l => l.type === 'journal' && l.wtG && (!ed || l.id !== ed.id)).sort((a, b) => a.t - b.t)[0];
+    return {
+      title: '📖 Journal entry',
+      body: `<div class="field"><label class="l">How is she doing?</label>${chips('status', [['', 'No status'], ...STATUS.map(s => [s[0], `${s[1]} ${s[2]}`])], src.status || '')}<div id="ctxStatus"></div></div>
+        <div class="field"><label class="l">Anything to note? (pick all that apply)</label>${chips('tags', TAGS, tags, 'checkbox')}<div id="ctxTags"></div></div>
+        <div class="field"><label class="l" for="jnote">Journal note</label><textarea name="note" id="jnote" rows="4" placeholder="How she is feeding, sleeping, looking. Things to remember to ask the pediatrician.">${esc(src.note || '')}</textarea></div>
+        <details class="addnote" ${hasM ? 'open' : ''}><summary>＋ Measurements &amp; temperature</summary>
+          <div class="field">${chips('sys', [['us', 'US (lb, in, °F)'], ['metric', 'Metric (kg, cm, °C)']], sys0)}</div>
+          <div class="field"><label class="l">Weight</label><div class="row2"><input type="number" name="wtA" min="0" step="any" inputmode="decimal"><input type="number" name="wtB" min="0" step="any" inputmode="decimal"></div><div id="ctxWeight"></div></div>
+          <div class="field"><label class="l" id="lLen">Length</label><input type="number" name="len" min="0" step="any" inputmode="decimal" style="width:100%"></div>
+          <div class="field"><label class="l" id="lHead">Head circumference</label><input type="number" name="head" min="0" step="any" inputmode="decimal" style="width:100%"></div>
+          <div class="field"><label class="l" id="lTemp">Temperature</label><input type="number" name="temp" step="any" inputmode="decimal" style="width:100%"><div id="ctxTemp"></div></div></details>
+        ${whenField(at, ed && at)}`,
+      init(f) { this.write(f, sys0, src); this.labels(f, sys0); },
+      read(f, sys) {
+        const v = n => parseFloat(f.elements[n].value), o = {};
+        const lb = v('wtA'), oz = v('wtB');
+        if (sys === 'us' ? !(isNaN(lb) && isNaN(oz)) : !isNaN(lb)) o.wtG = Math.round(sys === 'us' ? ((lb || 0) * 16 + (oz || 0)) * 28.3495 : lb * 1000);
+        if (v('len') > 0) o.lenCm = round1(sys === 'us' ? v('len') * 2.54 : v('len'));
+        if (v('head') > 0) o.headCm = round1(sys === 'us' ? v('head') * 2.54 : v('head'));
+        if (!isNaN(v('temp'))) o.tempC = round1(sys === 'us' ? (v('temp') - 32) * 5 / 9 : v('temp'));
+        return o;
+      },
+      write(f, sys, m) {
+        const set = (n, x) => { f.elements[n].value = x ?? ''; };
+        if (m.wtG) { if (sys === 'us') { const oz = m.wtG / 28.3495, lb = Math.floor(oz / 16); set('wtA', lb); set('wtB', round1(oz - lb * 16)); } else { set('wtA', round2(m.wtG / 1000)); set('wtB', ''); } }
+        else { set('wtA', ''); set('wtB', ''); }
+        set('len', m.lenCm ? round1(sys === 'us' ? m.lenCm / 2.54 : m.lenCm) : ''); set('head', m.headCm ? round1(sys === 'us' ? m.headCm / 2.54 : m.headCm) : '');
+        set('temp', m.tempC != null ? round1(sys === 'us' ? m.tempC * 9 / 5 + 32 : m.tempC) : '');
+      },
+      labels(f, sys) {
+        f.elements.wtA.placeholder = sys === 'us' ? 'lb' : 'kg'; f.elements.wtB.placeholder = 'oz'; f.elements.wtB.hidden = sys !== 'us';
+        f.elements.wtA.parentElement.style.gridTemplateColumns = sys === 'us' ? '1fr 1fr' : '1fr';
+        $('#lLen').textContent = `Length (${sys === 'us' ? 'in' : 'cm'})`; $('#lHead').textContent = `Head circumference (${sys === 'us' ? 'in' : 'cm'})`; $('#lTemp').textContent = `Temperature (${sys === 'us' ? '°F' : '°C'})`;
+      },
+      update(f) {
+        const ns = f.elements.sys.value;
+        if (ns !== curSys) { const m = this.read(f, curSys); curSys = ns; this.write(f, ns, m); this.labels(f, ns); }
+        const m = this.read(f, curSys), st = f.elements.status.value;
+        $('#ctxStatus').innerHTML = st === 'unwell' ? ctxHtml([{ level: 'watch', text: "If she seems unwell, trust your instincts: check her temperature, and call the pediatrician if you're worried." }]) : '';
+        $('#ctxTags').innerHTML = ctxHtml([...f.querySelectorAll('input[name=tags]:checked')].map(i => ({ level: 'ok', text: `<b>${(TAGS.find(t => t[0] === i.value) || [])[1]}:</b> ${TAG_TIPS[i.value]}` })));
+        const w = [];
+        if (m.wtG && first && first.t < at) { const pct = (m.wtG - first.wtG) / first.wtG * 100; w.push({ level: pct < -10 ? 'watch' : 'ok', text: `${pct >= 0 ? '+' : ''}${round1(pct)}% since her first recorded weight (${fmtWeight(first.wtG, curSys)}). Losing up to 7–10% in the first days is normal, and most babies are back to birth weight by about 2 weeks.` }); }
+        else if (m.wtG) w.push({ level: 'ok', text: 'Nice: this becomes the starting point. Losing up to 7–10% in the first days is normal, and most babies are back to birth weight by about 2 weeks.' });
+        $('#ctxWeight').innerHTML = ctxHtml(w);
+        $('#ctxTemp').innerHTML = m.tempC != null ? ctxHtml([tempInfo(m.tempC)]) : '';
+      },
+      collect(f, entry) {
+        const el = f.elements, m = this.read(f, curSys);
+        entry.status = el.status.value || undefined;
+        entry.tags = [...f.querySelectorAll('input[name=tags]:checked')].map(i => i.value).join(',') || undefined;
+        Object.assign(entry, m);
+        if (Object.keys(m).length) entry.sys = curSys;
+        if (!entry.status && !entry.tags && !entry.note && !Object.keys(m).length) return 'Add a status, a note or a measurement.';
+      },
+    };
+  },
+};
+
+let sheetState = null;
 function openSheet(type, opts = {}) {
-  const f = $('#sheetForm'), now = Date.now(), d = dayOfLife(now);
-  let update = () => {};
-  if (type === 'feed') {
-    const last = byType('feed').pop(), rep = repeatEntry(last);
-    const lastParts = rep ? rep.kind.split(',') : ['breast'];
-    const r = bottleRange(d), mid = Math.round((r[0] + r[1]) / 2 / 5) * 5;
-    f.innerHTML = `<h2>🍼 Log feeding</h2>
-      <div class="field"><label class="l">What did she have? (pick all that apply)</label>${chips('parts', FEED_PARTS, lastParts, 'checkbox')}<div id="ctxTiming"></div></div>
-      <div class="field" id="secBreast"><label class="l">Breast side(s)</label>${chips('sides', SIDES, rep?.sides ? rep.sides.split('') : ['L'], 'checkbox')}
-        <label class="l" style="margin-top:12px">Minutes (optional)</label>${chips('min', [['', 'Skip'], ['5', '5'], ['10', '10'], ['15', '15'], ['20', '20'], ['30', '30']], '')}<div id="ctxBreast"></div></div>
-      <div class="field" id="secFormula"><label class="l">Formula, mL</label>${stepper('fMl', last?.fMl ?? mid, 10)}<div id="ctxFormula"></div></div>
-      <div class="field" id="secPumped"><label class="l">Pumped milk, mL</label>${stepper('pMl', last?.pMl ?? mid, 10)}<div id="ctxPumped"></div></div>
-      <div class="callout" id="bottleTotal" style="margin:0"></div>
-      ${whenField(now)}${noteField('latched well, sleepy…')}<p class="ferr" id="ferr" hidden></p>${actionsHtml}`;
-    update = () => {
-      const on = k => f.querySelector(`input[name=parts][value=${k}]`).checked;
-      $('#secBreast').hidden = !on('breast'); $('#secFormula').hidden = !on('formula'); $('#secPumped').hidden = !on('pumped');
-      const fm = on('formula') ? +f.elements.fMl.value || 0 : 0, pm = on('pumped') ? +f.elements.pMl.value || 0 : 0, tot = fm + pm;
-      $('#bottleTotal').hidden = !(on('formula') || on('pumped'));
-      $('#bottleTotal').innerHTML = `<b>Bottle total: ${tot} mL</b>Breast isn't counted in the total.` +
-        (tot > r[1] * 1.5 ? `<div class="ctx watch">${tot} mL is above the usual amount for day ${d}. Bigger volumes can bring more spit-up: offer less and let her ask for more.</div>` : '');
-      const timing = feedTiming();
-      $('#ctxTiming').innerHTML = timing ? ctxHtml([{ level: 'ok', text: timing }]) : '';
-      $('#ctxBreast').innerHTML = ctxHtml([{ level: 'ok', text: 'Start on the side she finished on last time. A good latch: wide mouth, lips flanged out, steady swallowing. After a C-section, football hold or side-lying keeps weight off your incision.' }]);
-      $('#ctxFormula').innerHTML = ctxHtml([{ level: 'ok', text: `Typical on day ${d}: ${r[0]}–${r[1]} mL per feed. Pace the bottle, stop at fullness cues, toss leftovers after 1 hour.` }]);
-      $('#ctxPumped').innerHTML = ctxHtml([{ level: 'ok', text: 'Room temperature up to 4 h · fridge 4 days · freezer about 6 months. Warm in a bowl of warm water and swirl, don\'t shake.' }]);
-    };
-  } else if (type === 'note') {
-    f.innerHTML = `<h2>📝 Spit-up or note</h2>
-      <div class="field"><label class="l">What happened?</label>${chips('kind', NOTE_KINDS, 'spitup')}<div id="ctx"></div></div>
-      <div class="field" id="secSize"><label class="l">How much? (tap to save)</label><div class="sizes">
-        <button class="btn" value="save" data-ml="5">A little<small>≈ 5 mL · teaspoon</small></button>
-        <button class="btn" value="save" data-ml="15">Some<small>≈ 15 mL · tablespoon</small></button>
-        <button class="btn" value="save" data-ml="30">A lot<small>≈ 30 mL · 2 tbsp</small></button></div>
-        <label class="l" style="margin-top:12px">Or exact amount, mL</label>${stepper('amt', '', 5)}</div>
-      ${whenField(now)}<div class="field"><label class="l">Note</label><input type="text" name="note" placeholder="right after feeding, gassy, fussy…" style="width:100%"></div>${actionsHtml}`;
-    update = () => {
-      const k = f.elements.kind.value;
-      $('#secSize').hidden = k === 'other';
-      $('#ctx').innerHTML = ctxHtml([k === 'vomit'
-        ? { level: 'watch', text: '<b>Vomit</b> is larger or forceful. Call the pediatrician if it shoots out, is green or yellow-green, bloody, keeps happening after feeds, or comes with fever, a swollen belly, fewer wet diapers or poor feeding.' }
-        : k === 'spitup' ? { level: 'ok', text: '<b>Spit-up</b> is common: a small, effortless dribble during or after feeds, usually 5–15 mL. It often looks like more than it is. Burp mid-feed and hold her upright for 15–20 minutes afterwards.' }
-        : { level: 'ok', text: 'Anything worth remembering for the pediatrician: fussiness, rash, sleepiness, a temperature reading.' }]);
-    };
-  } else {
-    const kind = opts.kind || 'dirty', last = byType('feed').pop();
-    const color = d <= 2 ? 'black' : d === 3 ? 'darkgreen' : d === 4 ? 'green' : 'yellow';
-    const cons = d <= 2 ? 'pasty' : last && String(last.kind).split(',').every(k => k !== 'breast') && !LEGACY_FEED[last.kind] ? 'pasty' : 'seedy';
-    f.innerHTML = `<h2>💧 Diaper change</h2>
-      <div class="field"><label class="l">What was in it?</label>${chips('kind', DIAPER_KINDS, kind)}<div id="ctxCount"></div></div>
-      <div id="poop">
-        <div class="field"><label class="l">Color (typical for day ${d} is pre-selected)</label>${chips('color', COLORS, color)}<div id="ctxColor"></div></div>
-        <div class="field" style="margin-top:14px"><label class="l">Consistency</label>${chips('cons', CONS, cons)}<div id="ctxCons"></div></div>
-      </div>
-      ${whenField(now)}${noteField('rash, diaper cream…')}${actionsHtml}`;
-    update = () => {
-      const k = f.elements.kind.value, c = counts24(Date.now());
-      $('#poop').hidden = k === 'wet';
-      const [ci, si] = [stoolInfo(f.elements.color.value, '', d), stoolInfo('', f.elements.cons.value, d)];
-      $('#ctxColor').innerHTML = ctxHtml(ci); $('#ctxCons').innerHTML = ctxHtml(si);
-      $('#ctxCount').innerHTML = ctxHtml([{ level: 'ok', text: `Last 24 h: ${c.wet} wet, ${c.dirty} dirty. Goal today: ${wetGoal(d)}+ wet, ${dirtyGoal(d)}+ dirty.` }]);
-    };
-  }
-  f.onchange = f.oninput = () => { f.elements.when.hidden = f.elements.ago.value !== 'custom'; update(); };
-  f.dataset.type = type; update();
+  const f = $('#sheetForm'), now = Date.now(), ed = opts.edit || null, at = ed ? ed.t : now, d = dayOfLife(at);
+  const b = BUILDERS[type](ed, at, d, opts);
+  f.innerHTML = `<h2>${ed ? '✎ Edit · ' : ''}${b.title}</h2>${b.body}<p class="ferr" id="ferr" hidden></p>${actionsHtml(!!ed)}`;
+  sheetState = { type, ed, b };
+  if (b.init) b.init(f);
+  Object.entries(b.canon || {}).forEach(([n, ml]) => { if (ml && f.elements[n]) f.elements[n].dataset.ml = ml; });
+  let curUnit = f.elements.unit ? f.elements.unit.value : null;
+  f.onchange = f.oninput = ev => {
+    if (f.elements.ago) f.elements.when.hidden = f.elements.ago.value !== 'custom';
+    if (curUnit && f.elements.unit.value !== curUnit) {       // switching unit converts what is already typed
+      const nu = f.elements.unit.value;
+      (b.vol || []).forEach(n => { const el = f.elements[n]; if (el && el.value !== '') { const ml = readMl(el, curUnit); el.value = fromMl(ml, nu); el.dataset.ml = ml; } });
+      curUnit = nu;
+    }
+    b.update(f, ev);
+  };
+  b.update(f);
   $('#sheet').showModal();
 }
 
@@ -760,40 +1056,81 @@ function repeatFeed() {
   logQuick(entry, `Logged: ${detail(entry)}`);
 }
 const quickWet = () => logQuick({ id: uid(), type: 'diaper', t: Date.now(), kind: 'wet' }, '💧 Wet diaper logged');
+const quickStatus = k => logQuick({ id: uid(), type: 'journal', t: Date.now(), status: k }, `${statusOf(k)[1]} Logged: ${statusOf(k)[2]}`);
 
 $('#sheetForm').addEventListener('click', e => {
-  const b = e.target.closest('[data-step]'); if (!b) return;
-  const inp = $('#sheetForm').elements[b.dataset.for];
-  inp.value = Math.max(0, (parseFloat(inp.value) || 0) + parseFloat(b.dataset.step));
+  const b = e.target.closest('[data-dir]'); if (!b) return;
+  const f = $('#sheetForm'), inp = f.elements[b.dataset.for], u = f.elements.unit ? f.elements.unit.value : 'ml';
+  const step = b.dataset.stepml ? (u === 'oz' ? b.dataset.stepml / 20 : +b.dataset.stepml) : +b.dataset.stepfix;
+  inp.value = round2(Math.max(0, (parseFloat(inp.value) || 0) + step * b.dataset.dir));
   inp.dispatchEvent(new Event('input', { bubbles: true }));
 });
 $('#sheetForm').addEventListener('submit', e => {
-  const f = e.target, btn = e.submitter;
-  if (!btn || btn.value !== 'save') return;
-  const type = f.dataset.type, el = f.elements;
-  const entry = { id: uid(), type, t: readWhen(f), note: el.note?.value.trim() || undefined };
-  if (type === 'feed') {
-    const parts = [...f.querySelectorAll('input[name=parts]:checked')].map(i => i.value);
-    if (!parts.length) { e.preventDefault(); $('#ferr').textContent = 'Pick breast, formula or pumped milk.'; $('#ferr').hidden = false; return; }
-    entry.kind = parts.join(',');
-    if (parts.includes('breast')) {
-      entry.sides = [...f.querySelectorAll('input[name=sides]:checked')].map(i => i.value).join('') || undefined;
-      entry.min = parseFloat(el.min.value) || undefined;
-    }
-    if (parts.includes('formula')) entry.fMl = parseFloat(el.fMl.value) || undefined;
-    if (parts.includes('pumped')) entry.pMl = parseFloat(el.pMl.value) || undefined;
-    entry.amt = (entry.fMl || 0) + (entry.pMl || 0) || undefined;   // bottle total only, never breast
-  } else if (type === 'note') {
-    entry.kind = el.kind.value;
-    entry.amt = entry.kind === 'other' ? undefined : parseFloat(btn.dataset.ml) || parseFloat(el.amt.value) || undefined;
-  } else {
-    entry.kind = el.kind.value;
-    if (entry.kind !== 'wet') { entry.color = el.color.value || undefined; entry.cons = el.cons.value || undefined; }
+  const f = e.target, btn = e.submitter, { type, ed, b } = sheetState || {};
+  if (btn?.value === 'delete') {
+    if (ed && confirm('Delete this entry?')) { op({ op: 'delete', id: ed.id }); toast('Entry deleted', 7000, { label: 'Undo', fn: () => op({ op: 'add', entry: ed }) }); }
+    else e.preventDefault();
+    return;
   }
+  if (!btn || btn.value !== 'save') return;
+  const entry = { id: ed ? ed.id : uid(), type, t: readWhen(f) };
+  const nt = f.elements.note; if (nt && nt.value.trim()) entry.note = nt.value.trim();
+  const err = b.collect(f, entry, btn);
+  if (err) { e.preventDefault(); setErr(err); return; }
   const fl = flagFor(entry);
-  op({ op: 'add', entry });
-  toast(fl ? fl.msg : `Logged: ${detail(entry)}`, fl ? 8000 : 7000, { label: 'Undo', fn: () => op({ op: 'delete', id: entry.id }) });
+  if (ed) {
+    op({ op: 'update', entry });
+    toast(fl ? fl.msg : `Updated: ${detail(entry)}`, fl ? 8000 : 7000, { label: 'Undo', fn: () => op({ op: 'update', entry: ed }) });
+  } else {
+    op({ op: 'add', entry });
+    toast(fl ? fl.msg : `Logged: ${detail(entry)}`, fl ? 8000 : 7000, { label: 'Undo', fn: () => op({ op: 'delete', id: entry.id }) });
+  }
 });
+
+/* ---------- pumping tab ---------- */
+function renderPump(now) {
+  const all = byType('pump'), last = all[all.length - 1], u = defaultUnit('pump'), d = dayOfLife(now);
+  const iv = interval(all, 3 * H, 2 * H, 4 * H), since = last ? now - last.t : 0;
+  const tip = !last ? 'Early on, aim for about 8 sessions in 24 hours, including one overnight. Log your first session to start the reminders.'
+    : since > 4 * H ? `It has been ${dur(since)}. Try to pump at least every 3–4 hours in the early weeks.`
+    : 'On track. About 8 sessions in 24 hours, including one overnight, helps build supply in the early weeks.';
+  heroCard('#pumpCard', 'pump-c', 'Pumping', all, iv, `<button class="logbtn pump-c" data-log="pump">🥛 Log pumping session</button>`, tip, ['Pumping tips', TIPS.pump]);
+  const rec = all.filter(l => now - l.t < 24 * H), total = rec.reduce((a, l) => a + (l.amt || 0), 0);
+  const tile = (k, v, g) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">${g}</div></div>`;
+  $('#pumpTiles').innerHTML = tile('Sessions', rec.length, 'goal about 8') + tile('Total', total ? round1(fromMl(total, u)) : 0, unitName(u)) + tile('Average', rec.length && total ? round1(fromMl(total / rec.length, u)) : 0, `${unitName(u)} per session`);
+  const kept = all.filter(l => l.store !== 'discarded').reduce((a, l) => a + (l.amt || 0), 0);
+  const used = state.logs.filter(l => l.type === 'feed').map(normFeed).reduce((a, l) => a + (l.pMl || 0), 0);
+  $('#pumpStash').textContent = all.length ? `Estimated pumped milk on hand: ${fmtVol(Math.max(0, kept - used), u)} (${fmtVol(kept, u)} pumped minus ${fmtVol(used, u)} fed). It can't see milk you've thawed, spilled or thrown away, so use it as a guide.` : '';
+  // last 7 days
+  const days = Array.from({ length: 7 }, (_, i) => { const dt = new Date(now); dt.setHours(0, 0, 0, 0); dt.setDate(dt.getDate() - (6 - i)); return dt; });
+  const rows = days.map(dt => { const t0 = dt.getTime(), t1 = t0 + 24 * H, ss = all.filter(l => l.t >= t0 && l.t < t1); return { dt, n: ss.length, ml: ss.reduce((a, l) => a + (l.amt || 0), 0) }; });
+  const max = Math.max(1, ...rows.map(r => r.ml));
+  $('#pumpBars').innerHTML = rows.map(r => `<div class="row"><span>${r.dt.toLocaleDateString([], { weekday: 'short', day: 'numeric' })}</span><span class="track" role="img" aria-label="${fmtVol(r.ml, u)}"><i style="width:${r.ml / max * 100}%"></i></span><span class="val">${r.n ? `${fmtVol(r.ml, u)} · ${r.n}×` : '–'}</span></div>`).join('');
+  $('#pumpLog').innerHTML = entryRows([...all].sort((a, b) => b.t - a.t).slice(0, 40), 'No pumping sessions yet. Tap “Log pumping session”.');
+}
+
+/* ---------- journal tab ---------- */
+function renderJournal(now) {
+  const js = state.logs.filter(l => l.type === 'journal').sort((a, b) => b.t - a.t), d = dayOfLife(now);
+  const lastSt = js.find(l => l.status), st = lastSt && statusOf(lastSt.status);
+  $('#jStatus').innerHTML = `<div class="head"><i class="dot journal-c"></i>How is she doing?</div>
+    <div class="big">${st ? `${st[1]} ${st[2]}` : '–'}</div><div class="sub">${lastSt ? `${dur(now - lastSt.t)} ago` : 'Tap how she is right now'}</div>
+    <div class="statusgrid">${STATUS.map(s => `<button class="btn" data-status="${s[0]}"><span>${s[1]}</span>${s[2]}</button>`).join('')}</div>
+    <button class="logbtn journal-c" data-log="journal">＋ Journal note or measurements</button>`;
+  const c = counts24(now), recent = state.logs.filter(l => now - l.t < 24 * H);
+  const spits = recent.filter(l => l.type === 'note' && l.kind !== 'other').length, pumped = recent.filter(l => l.type === 'pump').reduce((a, l) => a + (l.amt || 0), 0);
+  const withW = js.filter(l => l.wtG), withT = js.find(l => l.tempC != null);
+  const w0 = withW[withW.length - 1], w1 = withW[0];
+  const row = (k, v) => `<div class="stat"><span>${k}</span><span>${v}</span></div>`;
+  $('#jGlance').innerHTML = row('Day of life', `Day ${d}`) + row('Feedings (24 h)', c.feeds) + row('Wet / dirty diapers (24 h)', `${c.wet} / ${c.dirty}`) + row('Spit-ups (24 h)', spits) +
+    row('Pumped (24 h)', pumped ? fmtVol(pumped, defaultUnit('pump')) : '–') +
+    row('Latest weight', w1 ? `${fmtWeight(w1.wtG, w1.sys)}${w0 !== w1 ? ` (${(w1.wtG - w0.wtG) / w0.wtG >= 0 ? '+' : ''}${round1((w1.wtG - w0.wtG) / w0.wtG * 100)}% since first)` : ''}` : '–') +
+    row('Latest temperature', withT ? `${fmtTemp(withT.tempC, withT.sys)} · ${fmtWhen(withT.t)}` : '–');
+  const ms = js.filter(l => l.wtG || l.lenCm || l.headCm || l.tempC != null).slice(0, 8);
+  $('#jMeas').innerHTML = ms.length ? `<table class="meas"><tr><th>When</th><th>Weight</th><th>Length</th><th>Head</th><th>Temp</th></tr>${ms.map(l => `<tr><td>${fmtWhen(l.t)}</td><td>${l.wtG ? fmtWeight(l.wtG, l.sys) : '–'}</td><td>${l.lenCm ? fmtLen(l.lenCm, l.sys) : '–'}</td><td>${l.headCm ? fmtLen(l.headCm, l.sys) : '–'}</td><td>${l.tempC != null ? fmtTemp(l.tempC, l.sys) : '–'}</td></tr>`).join('')}</table>` : '<p class="empty">No measurements yet. Add weight, length, head size or a temperature from “Journal note or measurements”.</p>';
+  $('#jLog').innerHTML = entryRows(js.slice(0, 60), 'Nothing here yet. Tap how she is doing, or add a note.');
+  $('#jGuide').innerHTML = TIPS.health;
+}
 
 /* ---------- guide ---------- */
 function renderNow(d) {
@@ -810,6 +1147,36 @@ function renderNow(d) {
 }
 
 const TIPS = {
+  pump: `<h3>How often &amp; how long</h3><ul>
+    <li>Early on, aim for <b>about 8 sessions in 24 hours</b>, including one overnight, or roughly every 3 hours, to build and protect supply.</li>
+    <li>About 15–20 minutes a session, or until milk has stopped flowing for about 2 minutes.</li>
+    <li>Many people get the most milk in the morning. Pumping between feeds or right after is fine.</li></ul>
+    <h3>What to expect</h3><ul>
+    <li>Days 1–3: drops to a few mL of colostrum. That is normal and valuable. Hand expression can work better than a pump at first.</li>
+    <li>Days 3–5: milk usually comes in (sometimes later after a C-section) and amounts climb quickly.</li>
+    <li>By about 2 weeks, roughly 60–120 mL (2–4 oz) across both sides is common, but the normal range is wide. Watch your own trend and her diapers, not other people's numbers.</li></ul>
+    <h3>Comfort &amp; technique</h3><ul>
+    <li>Flange fit matters: the nipple should move freely without rubbing. Pain isn't normal, so ask a lactation consultant to check the fit.</li>
+    <li>Warmth, gentle breast massage and looking at her photo can help let-down. Massaging while you pump often increases output.</li>
+    <li>After a C-section, support your incision with a pillow and sit well supported.</li></ul>
+    <h3>Storing &amp; handling</h3><ul>
+    <li>Wash hands and pump parts. Freshly pumped milk: room temperature up to 4 hours, fridge up to 4 days, freezer about 6 months.</li>
+    <li>Freeze in small portions (60–120 mL), label with the date, and use the oldest first. Thaw in the fridge or warm water, never the microwave. Don't refreeze thawed milk.</li></ul>
+    <h3>Get help if</h3><ul>
+    <li>Pain doesn't ease, nipples crack or bleed, or output is very low after day 5.</li>
+    <li>A hard, red, painful area with fever or flu-like aches (possible mastitis): call your doctor promptly.</li></ul>`,
+  health: `<h3>Temperature</h3><ul>
+    <li>A rectal reading is the most accurate for newborns.</li>
+    <li>Call right away for <b>100.4°F (38°C) or higher</b>, or a reading below 97.5°F (36.4°C), in a baby under 3 months.</li></ul>
+    <h3>Weight</h3><ul>
+    <li>Up to 7–10% below birth weight in the first days is normal. Most babies are back to birth weight by about 2 weeks.</li>
+    <li>After that, roughly 5–7 oz (140–200 g) a week is typical for the first months.</li></ul>
+    <h3>Jaundice</h3><ul>
+    <li>Yellow skin or eyes usually peaks around days 3–5. Call if it spreads, deepens, or she is very sleepy and feeding poorly.</li></ul>
+    <h3>Cord stump</h3><ul>
+    <li>Keep it dry, fold the diaper below it, and stick to sponge baths. Call for redness, pus or a bad smell.</li></ul>
+    <h3>Worth writing down for the pediatrician</h3><ul>
+    <li>Feeding and diaper counts, spit-ups, temperature readings, sleepiness, breathing that seems fast or noisy, and anything that worried you.</li></ul>`,
   feeding: `<h3>How often &amp; how much</h3><ul>
     <li><b>8–12 feeds per 24 hours</b>, roughly every 2–3 hours, counted from the <i>start</i> of one feed to the start of the next.</li>
     <li>Wake her to feed if she sleeps longer than <b>3 hours</b> until she is back to birth weight (usually ~2 weeks). Losing up to 7–10% of birth weight in the first days is normal.</li>
@@ -887,17 +1254,30 @@ function toast(msg, ms = 2200, action) {
 document.addEventListener('click', e => {
   const q = e.target.closest('[data-quick]'); if (q) return q.dataset.quick === 'wet' ? quickWet() : repeatFeed();
   const l = e.target.closest('[data-log]'); if (l) return openSheet(l.dataset.log, { kind: l.dataset.kind });
+  const ed = e.target.closest('[data-edit]'); if (ed) { const en = state.logs.find(x => x.id === ed.dataset.edit); if (en) openSheet(en.type, { edit: en }); return; }
+  const stt = e.target.closest('[data-status]'); if (stt) return quickStatus(stt.dataset.status);
+  const vw = e.target.closest('[data-view]'); if (vw) return showView(vw.dataset.view);
   const del = e.target.closest('[data-del]'); if (del) { if (confirm('Delete this entry?')) op({ op: 'delete', id: del.dataset.del }); return; }
 });
 $('#feedInt').addEventListener('change', e => op({ op: 'settings', settings: { feedInterval: e.target.value } }));
 $('#icsBtn').addEventListener('click', downloadIcs);
 window.addEventListener('resize', () => renderTimeline(Date.now()));
 
+/* ---------- tabs ---------- */
+function showView(v, scroll = true) {
+  document.querySelectorAll('.view').forEach(el => { el.hidden = el.id !== 'v-' + v; });
+  document.querySelectorAll('#tabbar button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === v)));
+  lsSet(LS_VIEW, v);
+  if (v === 'track') renderTimeline(Date.now());
+  if (scroll) window.scrollTo(0, 0);
+}
+
 /* ---------- settings dialog ---------- */
 function openSettings() {
   const f = $('#cfgForm');
   f.elements.name.value = state.settings.name || ''; f.birth.value = state.settings.birthMs ? localInput(state.settings.birthMs) : '';
   f.url.value = cfg?.url || ''; f.key.value = cfg?.key || '';
+  f.elements.units.value = state.settings.units || 'auto';
   $('#cfgOff').hidden = !cfg;
   $('#cfgDlg').showModal();
 }
@@ -905,7 +1285,7 @@ $('#cfgForm').addEventListener('submit', async e => {
   const f = e.target, v = e.submitter?.value;
   if (v === 'disconnect') { cfg = null; connected = false; pending = []; savePending(); try { localStorage.removeItem(LS_CFG); } catch {} render(); toast('Disconnected. Data stays on this device.'); return; }
   if (v !== 'save') return;
-  const settings = {}, b = new Date(f.birth.value).getTime();
+  const settings = { units: f.elements.units.value }, b = new Date(f.birth.value).getTime();
   const nm = f.elements.name.value.trim();
   if (nm) settings.name = nm;
   if (!isNaN(b)) settings.birthMs = b;
@@ -922,7 +1302,7 @@ $('#mode').addEventListener('click', openSettings);
   // One-time setup link: https://…/#u=<web app url>&k=<secret>. The hash never leaves the browser.
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get('u') && h.get('k')) { history.replaceState(null, '', location.pathname + location.search); render(); await connect({ url: h.get('u'), key: h.get('k') }, {}); }
-  render();
+  render(); showView(['track', 'pump', 'journal'].includes(lsGet(LS_VIEW)) ? lsGet(LS_VIEW) : 'track', false);
   if (cfg) { await pull(); if (!connected) { serverRev = -1; try { const j = await api('state'); state = j.state; serverRev = j.state.rev; connected = true; } catch {} } render(); flush(); syncCalendar(true); }
   if (!state.settings.birthMs) openSettings();
   setInterval(() => { render(); syncCalendar(); }, 60 * 1000);
