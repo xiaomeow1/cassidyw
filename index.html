@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Baby">
+<title>Newborn Tracker</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f4f1;
+  --surface: #ffffff;
+  --ink: #1c1b19;
+  --ink-2: #5b5a55;
+  --muted: #8a8880;
+  --line: #e7e4de;
+  --feed: #2a78d6;
+  --diaper: #eb6834;
+  --good: #2e7d32;
+  --warn: #9a6700;
+  --warn-bg: #fff4d6;
+  --crit: #b3261e;
+  --crit-bg: #fde8e6;
+  --chip: #f0ede8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --bg: #141413;
+    --surface: #1e1e1c;
+    --ink: #f2f1ec;
+    --ink-2: #c3c2b7;
+    --muted: #8f8e85;
+    --line: #33322e;
+    --feed: #3987e5;
+    --diaper: #d95926;
+    --good: #6fcf7f;
+    --warn: #f0b429;
+    --warn-bg: #3a2f10;
+    --crit: #ff8a80;
+    --crit-bg: #3d1a17;
+    --chip: #2a2926;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141413; --surface: #1e1e1c; --ink: #f2f1ec; --ink-2: #c3c2b7; --muted: #8f8e85;
+  --line: #33322e; --feed: #3987e5; --diaper: #d95926; --good: #6fcf7f; --warn: #f0b429;
+  --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a17; --chip: #2a2926;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  padding: env(safe-area-inset-top) 16px calc(32px + env(safe-area-inset-bottom));
+}
+main { max-width: 760px; margin: 0 auto; }
+h1, h2, h3, p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 20px 0 14px; }
+.top h1 { font-size: 30px; letter-spacing: -0.02em; line-height: 1.1; }
+.top .age { color: var(--ink-2); font-size: 14px; margin-top: 4px; }
+.pill { border: 0; cursor: pointer; font-family: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--chip); color: var(--ink-2); white-space: nowrap; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+section { margin-top: 16px; }
+.sec-title { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 2px 8px; }
+
+.alert { border-radius: 12px; padding: 12px 14px; font-size: 14px; margin-bottom: 10px; display: flex; gap: 10px; }
+.alert.call { background: var(--crit-bg); color: var(--crit); }
+.alert.watch { background: var(--warn-bg); color: var(--warn); }
+.alert b { font-weight: 650; }
+
+.hero { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 620px) { .hero { grid-template-columns: 1fr 1fr; } }
+.tracker .head { display: flex; align-items: center; gap: 8px; font-weight: 650; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.feed-c { background: var(--feed); } .diaper-c { background: var(--diaper); }
+.tracker .big { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin-top: 10px; font-variant-numeric: tabular-nums; }
+.tracker .sub { color: var(--ink-2); font-size: 14px; margin-top: 2px; }
+.next { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.next .lbl { color: var(--ink-2); font-size: 13px; }
+.next .val { font-weight: 650; font-size: 18px; font-variant-numeric: tabular-nums; }
+.next .rel { font-size: 13px; color: var(--ink-2); text-align: right; }
+.next .rel.due { color: var(--warn); font-weight: 650; }
+.bar { height: 6px; border-radius: 3px; background: var(--chip); margin-top: 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 3px; }
+.logbtn { width: 100%; margin-top: 14px; min-height: 48px; border: 0; border-radius: 12px; font-weight: 650; color: #fff; }
+.logbtn.feed-c { background: var(--feed); } .logbtn.diaper-c { background: var(--diaper); }
+.logbtn:active { filter: brightness(0.9); }
+.logbtn.diaper-c { color: #1c1b19; }
+
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tile { padding: 12px; }
+.tile .k { font-size: 12px; color: var(--ink-2); }
+.tile .v { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tile .g { font-size: 12px; color: var(--ink-2); }
+.tile .st { font-size: 12px; margin-top: 6px; font-weight: 600; }
+.tile .st.ok { color: var(--good); } .tile .st.low { color: var(--warn); }
+
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--ink-2); margin-bottom: 6px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .ring { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink-2); background: transparent; }
+#tl { position: relative; }
+#tl svg { display: block; width: 100%; overflow: visible; }
+#tl text { fill: var(--ink-2); font-size: 11px; font-family: inherit; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; padding: 6px 9px; border-radius: 8px; white-space: nowrap; transform: translate(-50%, -110%); z-index: 3; }
+
+.sched { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .sched { grid-template-columns: 1fr; } }
+.sched ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.sched li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 15px; font-variant-numeric: tabular-nums; }
+.sched li:last-child { border-bottom: 0; }
+.sched li span:last-child { color: var(--ink-2); }
+.calrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; }
+.calrow .msg { color: var(--ink-2); flex: 1 1 220px; }
+.calrow .msg.err { color: var(--crit); }
+.btn { border: 1px solid var(--line); background: var(--chip); border-radius: 10px; padding: 8px 12px; min-height: 40px; font-size: 14px; }
+.settings { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--ink-2); margin-top: 10px; flex-wrap: wrap; }
+select, input[type="number"], input[type="datetime-local"], input[type="password"], textarea, input[type="text"] {
+  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 40px;
+}
+
+.log { list-style: none; margin: 0; padding: 0; }
+.log li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.log li:last-child { border-bottom: 0; }
+.log .t { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink-2); min-width: 78px; }
+.log .d { font-size: 15px; }
+.log .d small { display: block; color: var(--ink-2); font-size: 13px; }
+.log .x { border: 0; background: transparent; color: var(--muted); font-size: 20px; width: 40px; height: 40px; border-radius: 8px; }
+.empty { color: var(--ink-2); font-size: 14px; padding: 6px 0; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(128,128,128,.5); vertical-align: -1px; }
+.flag { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-left: 6px; }
+.flag.call { background: var(--crit-bg); color: var(--crit); } .flag.watch { background: var(--warn-bg); color: var(--warn); }
+
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
+.tabs button { flex: none; border: 1px solid var(--line); background: var(--chip); border-radius: 999px; padding: 8px 14px; font-size: 14px; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tips h3 { font-size: 15px; margin: 14px 0 4px; }
+.tips h3:first-child { margin-top: 0; }
+.tips ul { margin: 4px 0 0; padding-left: 20px; }
+.tips li { margin: 4px 0; font-size: 15px; }
+.tips p { font-size: 15px; color: var(--ink-2); }
+.tips table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+.tips th, .tips td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tips th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
+.callout { background: var(--chip); border-radius: 12px; padding: 12px 14px; font-size: 15px; margin-bottom: 12px; }
+.callout b { display: block; margin-bottom: 2px; }
+.fine { color: var(--muted); font-size: 12px; margin-top: 16px; }
+
+dialog { border: 0; border-radius: 20px; padding: 0; width: min(520px, calc(100vw - 24px)); background: var(--surface); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+dialog::backdrop { background: rgba(0,0,0,.45); }
+dialog form { padding: 18px; display: grid; gap: 14px; }
+dialog h2 { font-size: 20px; }
+.field label.l { display: block; font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips label { position: relative; }
+.chips input { position: absolute; opacity: 0; inset: 0; }
+.chips span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--chip); font-size: 15px; }
+.chips input:checked + span { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chips input:focus-visible + span { outline: 2px solid var(--feed); outline-offset: 2px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; }
+.actions .btn { min-height: 48px; padding: 0 18px; }
+.actions .primary { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 650; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 10; max-width: calc(100vw - 32px); }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1 id="name">Baby</h1>
+      <div class="age" id="age"></div>
+    </div>
+    <button class="pill" id="mode" type="button"></button>
+  </div>
+
+  <div id="alerts"></div>
+
+  <div class="hero">
+    <div class="card tracker" id="feedCard"></div>
+    <div class="card tracker" id="diaperCard"></div>
+  </div>
+
+  <section>
+    <div class="sec-title">Last 24 hours</div>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section>
+    <div class="sec-title">Timeline</div>
+    <div class="card">
+      <div class="legend">
+        <span><i class="dot feed-c"></i>Feeding</span>
+        <span><i class="dot diaper-c"></i>Diaper</span>
+        <span><i class="ring"></i>Predicted</span>
+      </div>
+      <div id="tl"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">Upcoming schedule &amp; calendar</div>
+    <div class="card">
+      <div class="sched" id="sched"></div>
+      <div class="settings">
+        <label for="feedInt">Feed spacing</label>
+        <select id="feedInt">
+          <option value="auto">Auto (from her pattern)</option>
+          <option value="2">Every 2 h</option>
+          <option value="2.5">Every 2½ h</option>
+          <option value="3">Every 3 h</option>
+        </select>
+      </div>
+      <div class="calrow">
+        <div class="msg" id="calMsg"></div>
+        <button class="btn" id="icsBtn">Download .ics</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">Log</div>
+    <div class="card"><ul class="log" id="log"></ul></div>
+  </section>
+
+  <section>
+    <div class="sec-title">Newborn guide</div>
+    <div class="card tips">
+      <div class="callout" id="now"></div>
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div id="tipBody"></div>
+      <p class="fine">General guidance in line with AAP, CDC and NHS newborn advice. It's a reference, not medical advice. Your pediatrician and lactation consultant know her best.</p>
+    </div>
+  </section>
+</main>
+
+<dialog id="cfgDlg"><form method="dialog" id="cfgForm">
+  <h2>Settings</h2>
+  <div class="field"><label class="l" for="cfgName">Baby's name</label><input type="text" id="cfgName" name="name" style="width:100%" autocomplete="off"></div>
+  <div class="field"><label class="l" for="cfgBirth">Birth date &amp; time</label><input type="datetime-local" id="cfgBirth" name="birth" style="width:100%"></div>
+  <div class="field"><label class="l" for="cfgUrl">Google Sheet connection: web app URL</label><input type="text" id="cfgUrl" name="url" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+  <div class="field"><label class="l" for="cfgKey">Secret key</label><input type="password" id="cfgKey" name="key" style="width:100%" autocomplete="off"></div>
+  <p class="fine" style="margin:0">Name and birth time are saved to your Sheet, not to the website's code.</p>
+  <div class="actions"><button class="btn" value="disconnect" formnovalidate id="cfgOff">Disconnect</button><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>
+</form></dialog>
+<dialog id="sheet"><form method="dialog" id="sheetForm"></form></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+'use strict';
+/* ---------- constants ---------- */
+let BIRTH = Date.now(), NAME = 'Baby';
+const H = 3600e3, M = 60e3;
+const FEED_SLOTS = 4, DIAPER_SLOTS = 3;
+const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1';
+
+const FEED_KINDS = [['breast-l','Breast · Left'],['breast-r','Breast · Right'],['formula','Formula'],['pumped','Pumped milk']];
+const DIAPER_KINDS = [['wet','Wet'],['dirty','Dirty'],['both','Both']];
+const COLORS = [
+  ['black','Black / tarry','#1f1a17'], ['darkgreen','Dark green','#3d4a2a'], ['green','Green','#6b8e3a'],
+  ['yellow','Mustard yellow','#d4a72c'], ['tan','Tan / yellow-brown','#b58a4a'], ['brown','Brown','#7a5230'],
+  ['red','Red / bloody','#b3261e'], ['white','White / pale gray','#d9d6cc'],
+];
+const CONS = [['seedy','Seedy / soft'],['pasty','Pasty'],['loose','Loose'],['watery','Watery'],['formed','Soft formed'],['pellets','Hard pellets']];
+
+/* ---------- state ---------- */
+let state = { logs: [], settings: { feedInterval: 'auto' }, rev: 0 };
+let cfg = null, connected = false, pending = [], serverRev = -1, flushing = false;
+let calMsg = '', calErr = false, lastSig = '';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const r5 = t => Math.round(t / (5 * M)) * 5 * M;
+const fmtT = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+function fmtWhen(t) {
+  const d = new Date(t), same = d.toDateString() === new Date().toDateString();
+  return (same ? '' : d.toLocaleDateString([], { weekday: 'short' }) + ' ') + fmtT(t);
+}
+function dur(ms) {
+  const m = Math.round(Math.abs(ms) / M), h = Math.floor(m / 60);
+  return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
+}
+const dayOfLife = t => Math.max(1, Math.floor((t - BIRTH) / (24 * H)) + 1);
+
+function loadLocal() { try { return JSON.parse(localStorage.getItem(LS)); } catch { return null; } }
+function saveLocal() { try { localStorage.setItem(LS, JSON.stringify(state)); } catch {} }
+
+/* ---------- storage: this device first, Google Sheet when connected ---------- */
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const savePending = () => lsSet(LS_PEND, pending);
+
+async function api(action, payload = {}) {
+  // text/plain keeps this a "simple" request, so Apps Script needs no CORS preflight.
+  const r = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ key: cfg.key, action, ...payload }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Request failed');
+  return j;
+}
+
+function applyLocal(o) {
+  if (o.op === 'add') { if (!state.logs.some(l => l.id === o.entry.id)) state.logs.push(o.entry); }
+  else if (o.op === 'delete') state.logs = state.logs.filter(l => l.id !== o.id);
+  else if (o.op === 'settings') Object.assign(state.settings, o.settings);
+}
+// Show the change instantly, then push it to the Sheet. Failed pushes stay queued and retry.
+async function op(o) {
+  applyLocal(o);
+  if (cfg) { pending.push(o); savePending(); }
+  lsSet(LS, state); render(); syncCalendar();
+  flush();
+}
+async function flush() {
+  if (!cfg || flushing || !pending.length) return;
+  flushing = true;
+  const batch = pending.slice();
+  try {
+    const j = await api('ops', { ops: batch });
+    pending = pending.slice(batch.length); savePending();
+    state = j.state; serverRev = j.state.rev; connected = true;
+    pending.forEach(applyLocal);
+    lsSet(LS, state); render(); syncCalendar();
+  } catch (e) {
+    connected = false; renderMode();
+    if (/secret|unauthor/i.test(e.message)) toast('The Sheet rejected the secret key. Check ⚙ Settings.', 6000);
+  }
+  flushing = false;
+  if (connected && pending.length) flush();
+}
+async function pull() {
+  if (!cfg || document.hidden) return;
+  if (pending.length) return flush();
+  try {
+    const { rev } = await api('rev');
+    connected = true;
+    if (rev !== serverRev) { const j = await api('state'); state = j.state; serverRev = j.state.rev; lsSet(LS, state); render(); syncCalendar(); }
+    else renderMode();
+  } catch { connected = false; renderMode(); }
+}
+async function connect(c, settings) {
+  const prev = cfg; cfg = c;
+  try {
+    const j = await api('state');
+    lsSet(LS_CFG, c);
+    const old = state; state = j.state; serverRev = j.state.rev; connected = true;
+    const ops = [];
+    if (!state.logs.length) old.logs.forEach(l => ops.push({ op: 'add', entry: l }));   // carry over anything logged before connecting
+    const st = {};
+    ['name', 'birthMs'].forEach(k => { if (!state.settings[k] && old.settings[k]) st[k] = old.settings[k]; });
+    Object.assign(st, settings);
+    if (Object.keys(st).length) ops.push({ op: 'settings', settings: st });
+    ops.forEach(o => { applyLocal(o); pending.push(o); });
+    savePending(); lsSet(LS, state); render(); flush(); syncCalendar(true);
+    toast('Connected to your Sheet');
+  } catch (e) { cfg = prev; toast('Could not connect: ' + e.message, 6000); }
+}
+function applySettings() {
+  const s = state.settings;
+  NAME = s.name || 'Baby'; BIRTH = s.birthMs || Date.now();
+  $('#name').textContent = NAME; document.title = s.name ? `${NAME} · Newborn Tracker` : 'Newborn Tracker';
+}
+
+/* ---------- predictions ---------- */
+const byType = t => state.logs.filter(l => l.type === t).sort((a, b) => a.t - b.t);
+function interval(list, def, lo, hi) {
+  const ts = list.slice(-7).map(l => l.t), gaps = [];
+  for (let i = 1; i < ts.length; i++) { const g = ts[i] - ts[i - 1]; if (g > 0 && g <= 5 * H) gaps.push(g); }
+  const avg = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : def;
+  return Math.min(hi, Math.max(lo, avg));
+}
+function feedInterval() {
+  const fixed = parseFloat(state.settings.feedInterval);
+  return fixed > 0 ? fixed * H : interval(byType('feed'), 2.5 * H, 1.5 * H, 3 * H);
+}
+const diaperInterval = () => interval(byType('diaper'), 2.5 * H, 1.5 * H, 3.5 * H);
+
+function projection(list, iv, n) {
+  if (!list.length) return null;
+  const last = list[list.length - 1].t, now = Date.now(), raw = last + iv;
+  const first = raw > now ? r5(raw) : r5(now + 10 * M);
+  const times = Array.from({ length: n }, (_, i) => first + i * iv).map(r5);
+  return { last, iv, raw, times, overdue: raw <= now };
+}
+function buildSlots() {
+  const out = [];
+  const f = projection(byType('feed'), feedInterval(), FEED_SLOTS);
+  const d = projection(byType('diaper'), diaperInterval(), DIAPER_SLOTS);
+  const note = iv => `Estimated from ${NAME}'s recent pattern (about every ${dur(iv)}). Auto-updated by the tracker.`;
+  if (f) f.times.forEach((t, i) => out.push({ uid: `feed-${i + 1}`, kind: 'feed', title: `🍼 ${NAME} · feeding`, notes: note(f.iv), start: t, end: t + 20 * M }));
+  if (d) d.times.forEach((t, i) => out.push({ uid: `diaper-${i + 1}`, kind: 'diaper', title: `💧 ${NAME} · diaper check`, notes: note(d.iv), start: t, end: t + 15 * M }));
+  return out;
+}
+
+/* ---------- guidance helpers ---------- */
+const wetGoal = d => d >= 5 ? 6 : d;
+const dirtyGoal = d => d <= 2 ? 1 : d === 3 ? 2 : 3;
+
+function stoolFlag(e) {
+  if (!(e.kind === 'dirty' || e.kind === 'both')) return null;
+  if (e.color === 'red') return { level: 'call', msg: 'Red or bloody stool: call the pediatrician today.' };
+  if (e.color === 'white') return { level: 'call', msg: 'White or pale gray stool can signal a bile-flow problem: call the pediatrician today.' };
+  if (e.color === 'black' && dayOfLife(e.t) >= 5) return { level: 'call', msg: 'Black stool after the first few days: call the pediatrician.' };
+  if (e.cons === 'pellets') return { level: 'watch', msg: 'Hard pellet-like stools suggest constipation. Mention it to the pediatrician if it continues.' };
+  if (e.cons === 'watery') return { level: 'watch', msg: 'Very watery stools: watch wet-diaper count for dehydration and call if it keeps happening.' };
+  return null;
+}
+const colorName = k => (COLORS.find(c => c[0] === k) || [])[1];
+const colorHex = k => (COLORS.find(c => c[0] === k) || [])[2];
+const consName = k => (CONS.find(c => c[0] === k) || [])[1];
+const kindName = (list, k) => (list.find(c => c[0] === k) || [])[1] || k;
+
+function detail(e) {
+  if (e.type === 'feed') {
+    const unit = e.kind.startsWith('breast') ? ' min' : ' oz';
+    return kindName(FEED_KINDS, e.kind) + (e.amt ? ` · ${e.amt}${unit}` : '');
+  }
+  return kindName(DIAPER_KINDS, e.kind) + (e.kind !== 'wet' && e.color ? ` · ${colorName(e.color)}` : '') + (e.cons ? `, ${consName(e.cons)}` : '');
+}
+
+/* ---------- render ---------- */
+function render() {
+  applySettings();
+  const now = Date.now(), age = now - BIRTH, d = dayOfLife(now);
+  $('#age').textContent = !state.settings.birthMs ? 'Tap ⚙ Settings to add her birth date and time'
+    : age < 0 ? 'Due soon' : `Day ${d} · ${Math.floor(age / (24 * H))}d ${Math.floor(age % (24 * H) / H)}h old · born ${new Date(BIRTH).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
+  renderMode();
+
+  renderAlerts(now);
+  renderHero(now);
+  renderTiles(now, d);
+  renderTimeline(now);
+  renderSchedule(now);
+  renderLog();
+  $('#feedInt').value = String(state.settings.feedInterval ?? 'auto');
+  renderNow(d);
+  renderCal();
+}
+
+function renderAlerts(now) {
+  const flagged = state.logs.filter(l => l.type === 'diaper' && now - l.t < 24 * H).map(l => [l, stoolFlag(l)]).filter(x => x[1]);
+  flagged.sort((a, b) => (a[1].level === 'call' ? 0 : 1) - (b[1].level === 'call' ? 0 : 1));
+  $('#alerts').innerHTML = flagged.slice(0, 2).map(([l, f]) =>
+    `<div class="alert ${f.level}" role="alert"><span>${f.level === 'call' ? '⚠️' : '👀'}</span><span><b>${f.level === 'call' ? 'Call the pediatrician' : 'Keep an eye on this'}</b> · ${fmtWhen(l.t)}<br>${esc(f.msg)}</span></div>`).join('');
+}
+
+function heroCard(el, cls, title, list, iv, emoji) {
+  const now = Date.now(), p = projection(list, iv, 1), last = list[list.length - 1];
+  let html = `<div class="head"><i class="dot ${cls}"></i>${title}</div>`;
+  if (!last) {
+    html += `<div class="big">–</div><div class="sub">Nothing logged yet</div>`;
+  } else {
+    html += `<div class="big">${fmtT(last.t)}</div><div class="sub">${dur(now - last.t)} ago · ${esc(detail(last))}</div>`;
+    const due = p.raw <= now;
+    const frac = Math.min(1, Math.max(0, (now - last.t) / (p.raw - last.t)));
+    html += `<div class="bar" aria-hidden="true"><i class="${cls}" style="width:${frac * 100}%"></i></div>
+      <div class="next"><div><div class="lbl">Next ≈</div><div class="val">${fmtT(due ? p.raw : p.times[0])}</div></div>
+      <div class="rel ${due ? 'due' : ''}">${due ? (now - p.raw < 5 * M ? 'due now' : `overdue ${dur(now - p.raw)}`) : `in ${dur(p.raw - now)}`}<br>every ~${dur(iv)}</div></div>`;
+  }
+  html += `<button class="logbtn ${cls}" data-log="${el === '#feedCard' ? 'feed' : 'diaper'}">${emoji} Log ${el === '#feedCard' ? 'feeding' : 'diaper change'}</button>`;
+  $(el).innerHTML = html;
+}
+function renderHero() {
+  heroCard('#feedCard', 'feed-c', 'Feeding', byType('feed'), feedInterval(), '🍼');
+  heroCard('#diaperCard', 'diaper-c', 'Diapers', byType('diaper'), diaperInterval(), '💧');
+}
+
+function renderTiles(now, d) {
+  const recent = state.logs.filter(l => now - l.t < 24 * H);
+  const feeds = recent.filter(l => l.type === 'feed').length;
+  const dia = recent.filter(l => l.type === 'diaper');
+  const wet = dia.filter(l => l.kind === 'wet' || l.kind === 'both').length;
+  const dirty = dia.filter(l => l.kind === 'dirty' || l.kind === 'both').length;
+  const tile = (k, v, goal, ok) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">goal ${goal}</div><div class="st ${ok ? 'ok' : 'low'}">${ok ? '✓ On track' : 'Below goal so far'}</div></div>`;
+  $('#tiles').innerHTML = tile('Feedings', feeds, '8–12', feeds >= 8) + tile('Wet diapers', wet, wetGoal(d) + '+', wet >= wetGoal(d)) + tile('Dirty diapers', dirty, dirtyGoal(d) + '+', dirty >= dirtyGoal(d));
+}
+
+let tlItems = [];
+function renderTimeline(now) {
+  const box = $('#tl'), w = box.clientWidth || 340, h = 168, padX = 12;
+  const t0 = now - 24 * H, t1 = now + 6 * H, x = t => padX + (t - t0) / (t1 - t0) * (w - 2 * padX);
+  const rows = { feed: 56, diaper: 108 };
+  tlItems = [];
+  state.logs.filter(l => l.t >= t0 && l.t <= t1).forEach(l => tlItems.push({ x: x(l.t), y: rows[l.type], type: l.type, pred: false, tip: `${fmtWhen(l.t)} · ${detail(l)}` }));
+  buildSlots().forEach(s => { if (s.start <= t1) tlItems.push({ x: x(s.start), y: rows[s.kind], type: s.kind, pred: true, tip: `≈ ${fmtWhen(s.start)} · predicted` }); });
+  let svg = `<svg viewBox="0 0 ${w} ${h}" height="${h}" role="img" aria-label="Timeline of feedings and diaper changes over the last 24 hours">`;
+  svg += `<text x="${padX}" y="${rows.feed - 22}">Feedings</text><text x="${padX}" y="${rows.diaper - 22}">Diapers</text>`;
+  Object.values(rows).forEach(y => { svg += `<line x1="${padX}" x2="${w - padX}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`; });
+  for (let t = Math.ceil(t0 / H) * H; t <= t1; t += H) {
+    const hr = new Date(t).getHours();
+    if (hr % 6 === 0) {
+      svg += `<line x1="${x(t)}" x2="${x(t)}" y1="30" y2="${h - 24}" stroke="var(--line)" stroke-dasharray="2 4"/>`;
+      if (Math.abs(x(t) - x(now)) > 34) svg += `<text x="${x(t)}" y="${h - 6}" text-anchor="middle">${new Date(t).toLocaleTimeString([], { hour: 'numeric' })}</text>`;
+    }
+  }
+  svg += `<line x1="${x(now)}" x2="${x(now)}" y1="30" y2="${h - 24}" stroke="var(--ink-2)" stroke-width="1.5"/><text x="${x(now)}" y="${h - 6}" text-anchor="middle" style="font-weight:700">Now</text>`;
+  tlItems.forEach((it, i) => {
+    const c = it.type === 'feed' ? 'var(--feed)' : 'var(--diaper)';
+    svg += it.pred
+      ? `<circle cx="${it.x}" cy="${it.y}" r="6" fill="var(--surface)" stroke="${c}" stroke-width="2"/>`
+      : `<circle cx="${it.x}" cy="${it.y}" r="6" fill="${c}" stroke="var(--surface)" stroke-width="2"/>`;
+    svg += `<circle class="hit" data-i="${i}" cx="${it.x}" cy="${it.y}" r="15" fill="transparent" style="cursor:pointer"/>`;
+  });
+  box.innerHTML = svg + '</svg>';
+}
+$('#tl').addEventListener('pointerover', e => {
+  const c = e.target.closest('.hit'); if (!c) return;
+  const it = tlItems[+c.dataset.i]; let tip = $('#tl .tip');
+  if (!tip) { tip = document.createElement('div'); tip.className = 'tip'; $('#tl').appendChild(tip); }
+  tip.textContent = it.tip; tip.style.left = Math.min(Math.max(it.x, 70), $('#tl').clientWidth - 70) + 'px'; tip.style.top = it.y + 'px';
+});
+$('#tl').addEventListener('pointerout', e => { if (e.target.closest('.hit')) $('#tl .tip')?.remove(); });
+
+function renderSchedule(now) {
+  const slots = buildSlots(), col = k => slots.filter(s => s.kind === k);
+  const list = (k, label) => `<div><h3 style="font-size:15px">${label}</h3>${col(k).length ? '<ul>' + col(k).map(s => `<li><span>${fmtT(s.start)}</span><span>${dur(s.start - now) === '0m' ? 'now' : 'in ' + dur(s.start - now)}</span></li>`).join('') + '</ul>' : '<p class="empty">Log one to see estimates.</p>'}</div>`;
+  $('#sched').innerHTML = list('feed', '🍼 Next feedings') + list('diaper', '💧 Next diaper checks');
+}
+
+function renderLog() {
+  const items = [...state.logs].sort((a, b) => b.t - a.t).slice(0, 40);
+  $('#log').innerHTML = items.length ? items.map(l => {
+    const f = stoolFlag(l), hex = l.type === 'diaper' && l.color ? colorHex(l.color) : null;
+    return `<li><span class="t">${fmtWhen(l.t)}</span>
+      <span class="d"><i class="dot ${l.type === 'feed' ? 'feed-c' : 'diaper-c'}" style="display:inline-block;margin-right:8px"></i>${hex ? `<span class="swatch" style="background:${hex}"></span>` : ''}${esc(detail(l))}${f ? `<span class="flag ${f.level}">${f.level === 'call' ? 'CALL DR' : 'WATCH'}</span>` : ''}${l.note ? `<small>${esc(l.note)}</small>` : ''}</span>
+      <button class="x" data-del="${l.id}" aria-label="Delete entry">×</button></li>`;
+  }).join('') : '<li class="empty">No entries yet. Tap “Log feeding” or “Log diaper change” above.</li>';
+}
+
+function renderMode() {
+  $('#mode').textContent = !cfg ? '○ This device only · ⚙' : connected ? (pending.length ? `◐ Saving ${pending.length}… · ⚙` : '● Synced to Sheet · ⚙') : `◌ Offline${pending.length ? ` (${pending.length} waiting)` : ''} · ⚙`;
+}
+function renderCal() {
+  const n = buildSlots().length;
+  if (cfg) {
+    $('#calMsg').textContent = calMsg || (n ? 'Calendar sync is on. The events update automatically whenever you log.' : 'Log a feeding or diaper to create calendar events.');
+    $('#calMsg').className = 'msg' + (calErr ? ' err' : '');
+  } else {
+    $('#calMsg').textContent = 'Connect your Google Sheet in ⚙ Settings to save your log online and update your calendar automatically. Or download the .ics and open it on your iPhone.';
+    $('#calMsg').className = 'msg';
+  }
+  $('#icsBtn').disabled = !n;
+}
+
+/* ---------- calendar ---------- */
+async function syncCalendar(force) {
+  const slots = buildSlots(), sig = JSON.stringify(slots.map(s => [s.uid, s.start, s.title]));
+  if (!cfg || !slots.length) { renderCal(); return; }
+  if (sig === lastSig && !force) return;
+  lastSig = sig; calMsg = 'Syncing to Calendar…'; calErr = false; renderCal();
+  try { const j = await api('schedule', { slots }); calMsg = j.message; }
+  catch (e) { calMsg = 'Calendar sync failed: ' + e.message; calErr = true; lastSig = ''; }
+  renderCal();
+}
+function downloadIcs() {
+  const dt = t => new Date(t).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const stamp = dt(Date.now()), seq = Math.floor(Date.now() / 1000);
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Newborn Tracker//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${NAME}`];
+  buildSlots().forEach(s => lines.push('BEGIN:VEVENT', `UID:${s.uid}@tracker.local`, `DTSTAMP:${stamp}`, `SEQUENCE:${seq}`, `DTSTART:${dt(s.start)}`, `DTEND:${dt(s.end)}`,
+    `SUMMARY:${s.title}`, `DESCRIPTION:${s.notes}`, 'BEGIN:VALARM', 'TRIGGER:-PT5M', 'ACTION:DISPLAY', `DESCRIPTION:${s.title}`, 'END:VALARM', 'END:VEVENT'));
+  lines.push('END:VCALENDAR');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/calendar' }));
+  a.download = 'baby-schedule.ics'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+/* ---------- log sheet ---------- */
+const chips = (name, opts, sel) => `<div class="chips">${opts.map(o => `<label><input type="radio" name="${name}" value="${o[0]}" ${o[0] === sel ? 'checked' : ''}><span>${o[2] ? `<i class="swatch" style="background:${o[2]}"></i>` : ''}${o[1]}</span></label>`).join('')}</div>`;
+const localInput = t => { const d = new Date(t - new Date(t).getTimezoneOffset() * M); return d.toISOString().slice(0, 16); };
+
+function openSheet(type) {
+  const f = $('#sheetForm'), now = Date.now();
+  if (type === 'feed') {
+    const last = byType('feed').pop();
+    const def = last?.kind === 'breast-l' ? 'breast-r' : last?.kind === 'breast-r' ? 'breast-l' : last?.kind || 'breast-l';
+    f.innerHTML = `<h2>🍼 Log feeding</h2>
+      <div class="field"><label class="l">Type</label>${chips('kind', FEED_KINDS, def)}</div>
+      <div class="field"><label class="l" id="amtL" for="amt">Minutes (optional)</label><input type="number" id="amt" name="amt" min="0" step="any" inputmode="decimal" style="width:100%"></div>
+      <div class="field"><label class="l" for="when">When</label><input type="datetime-local" id="when" name="when" value="${localInput(now)}" max="${localInput(now + H)}" style="width:100%"></div>
+      <div class="field"><label class="l" for="note">Note (optional)</label><input type="text" id="note" name="note" placeholder="latched well, spit up, sleepy…" style="width:100%"></div>
+      <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
+    const sync = () => { const b = f.kind.value.startsWith('breast'); $('#amtL').textContent = b ? 'Minutes (optional)' : 'Ounces (optional)'; };
+    f.onchange = sync; sync();
+  } else {
+    f.innerHTML = `<h2>💧 Log diaper change</h2>
+      <div class="field"><label class="l">What was in it?</label>${chips('kind', DIAPER_KINDS, 'wet')}</div>
+      <div id="poop" hidden>
+        <div class="field"><label class="l">Color</label>${chips('color', COLORS, '')}</div>
+        <div class="field" style="margin-top:14px"><label class="l">Consistency</label>${chips('cons', CONS, '')}</div>
+      </div>
+      <div class="field"><label class="l" for="when">When</label><input type="datetime-local" id="when" name="when" value="${localInput(now)}" max="${localInput(now + H)}" style="width:100%"></div>
+      <div class="field"><label class="l" for="note">Note (optional)</label><input type="text" id="note" name="note" placeholder="rash, diaper cream…" style="width:100%"></div>
+      <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
+    f.onchange = () => { $('#poop').hidden = f.kind.value === 'wet'; };
+  }
+  f.dataset.type = type;
+  $('#sheet').showModal();
+}
+$('#sheetForm').addEventListener('submit', e => {
+  const f = e.target, btn = e.submitter;
+  if (!btn || btn.value !== 'save') return;
+  const type = f.dataset.type, when = new Date(f.when.value).getTime();
+  const entry = { id: uid(), type, t: isNaN(when) ? Date.now() : when, kind: f.kind.value, note: f.note.value.trim() || undefined };
+  if (type === 'feed') entry.amt = parseFloat(f.amt.value) || undefined;
+  else if (entry.kind !== 'wet') { entry.color = f.color.value || undefined; entry.cons = f.cons.value || undefined; }
+  op({ op: 'add', entry });
+  const fl = stoolFlag(entry);
+  toast(fl ? fl.msg : type === 'feed' ? 'Feeding logged' : 'Diaper logged', fl ? 6000 : 2200);
+});
+
+/* ---------- guide ---------- */
+function renderNow(d) {
+  const T = {
+    1: ['Day 1: welcome, ' + NAME, 'Colostrum comes in tiny amounts and that is exactly enough. Feed on cue, skin-to-skin as much as you can, and expect the first black, tarry meconium stool. After a C-section, side-lying or football hold keeps her off your incision.'],
+    2: ['Day 2: cluster feeding is normal', 'She may want to nurse very often, which helps bring your milk in. Aim for 2+ wet diapers and stools that are still dark and tarry. Formula babies take about 0.5–1 oz per feed.'],
+    3: ['Day 3: milk is coming in', 'Milk usually arrives on days 3–5 (sometimes a little later after a C-section). Expect 3+ wet diapers and stools turning greenish-brown. Her first pediatric visit is usually due within 48–72 hours of leaving the hospital.'],
+    4: ['Day 4: stools turning yellow', 'Look for 4+ wet diapers and 3+ stools shifting to green-yellow. Newborn jaundice peaks around days 3–5: yellow skin or eyes, or a sleepy baby who feeds poorly, is a reason to call.'],
+  };
+  const [t, b] = T[d] || (d <= 14
+    ? ['Days 5–14: finding a rhythm', 'Look for 6+ wet diapers and 3+ yellow, seedy (breastfed) or tan, pasty (formula) stools a day. Most babies regain birth weight by about 2 weeks. Keep waking her to feed if she sleeps past 3 hours until your pediatrician says otherwise.']
+    : ['Weeks 3–4: settling in', 'Feeds spread out slightly and she may give you a longer stretch at night. Growth spurts around 2–3 weeks can bring cluster feeding again. Keep counting wet diapers, since 6+ a day means she is getting enough.']);
+  $('#now').innerHTML = `<b>${t}</b>${b}`;
+}
+
+const TIPS = {
+  feeding: `<h3>How often &amp; how much</h3><ul>
+    <li><b>8–12 feeds per 24 hours</b>, roughly every 2–3 hours, counted from the <i>start</i> of one feed to the start of the next.</li>
+    <li>Wake her to feed if she sleeps longer than <b>3 hours</b> until she is back to birth weight (usually ~2 weeks). Losing up to 7–10% of birth weight in the first days is normal.</li>
+    <li>Formula per feed: days 1–2 ≈ 0.5–1 oz · days 3–7 ≈ 1–2 oz · weeks 2–4 ≈ 2–3 oz. Let her cues decide, never force a bottle.</li>
+    <li>Breastfeeding: 10–20 min per side, or until she comes off on her own. Alternate the side you start on.</li></ul>
+    <h3>Hunger cues (before crying)</h3><ul><li>Rooting, hands to mouth, lip smacking, stretching. Crying is a <i>late</i> cue.</li></ul>
+    <h3>Good latch &amp; enough milk</h3><ul>
+    <li>Wide mouth, lips flanged out, rhythmic suck-swallow, no pinching pain past the first few seconds.</li>
+    <li>Best proof she's eating enough: wet and dirty diaper counts, and weight gain at check-ups.</li></ul>
+    <h3>After a C-section</h3><ul>
+    <li>Football hold or side-lying keep weight off your incision. Put a pillow over it for other positions.</li>
+    <li>Milk can come in a day or so later. Keep feeding often, and ask your team which pain medicines are fine while nursing.</li></ul>
+    <h3>Good to know</h3><ul>
+    <li>Cluster feeding (back-to-back feeds, often evenings) is normal and not a sign of low supply.</li>
+    <li>Burp mid-feed and after. Spit-up is common; forceful or green vomiting is not.</li>
+    <li>Breastfed babies need <b>vitamin D, 400 IU daily</b> (per AAP). No water or juice.</li>
+    <li>Pumped milk: 4 h at room temp, 4 days in the fridge, ~6 months in the freezer. Toss formula left in a bottle after 1 hour.</li></ul>`,
+  diapers: `<h3>What to expect each day</h3>
+    <table><tr><th>Day</th><th>Wet</th><th>Stools</th><th>Usually looks like</th></tr>
+    <tr><td>1</td><td>1+</td><td>1+</td><td>Black, tarry (meconium)</td></tr>
+    <tr><td>2</td><td>2+</td><td>1–2+</td><td>Dark green-black</td></tr>
+    <tr><td>3</td><td>3+</td><td>2+</td><td>Green-brown, transitional</td></tr>
+    <tr><td>4</td><td>4+</td><td>3+</td><td>Green to yellow</td></tr>
+    <tr><td>5+</td><td>6+</td><td>3+</td><td>Yellow, seedy (breast) or tan, pasty (formula)</td></tr></table>
+    <h3>Poop color &amp; consistency</h3>
+    <table><tr><th>Look</th><th>Meaning</th></tr>
+    <tr><td><i class="swatch" style="background:#1f1a17"></i>Black, sticky</td><td>Normal for the first ~3 days. Black after day 4–5: call.</td></tr>
+    <tr><td><i class="swatch" style="background:#3d4a2a"></i>Dark / <i class="swatch" style="background:#6b8e3a"></i>bright green</td><td>Normal: transition stools, or just a green day.</td></tr>
+    <tr><td><i class="swatch" style="background:#d4a72c"></i>Mustard yellow, seedy, loose</td><td>Typical breastfed stool. Can be frequent and a bit runny.</td></tr>
+    <tr><td><i class="swatch" style="background:#b58a4a"></i>Tan to brown, pasty</td><td>Typical formula stool, like peanut butter. Fewer, firmer stools.</td></tr>
+    <tr><td><i class="swatch" style="background:#b3261e"></i>Red or blood-streaked</td><td><b>Call the pediatrician.</b></td></tr>
+    <tr><td><i class="swatch" style="background:#d9d6cc"></i>White, chalky or pale gray</td><td><b>Call the pediatrician promptly.</b> Can signal a liver or bile problem.</td></tr>
+    <tr><td>Hard pellets</td><td>Constipation. Mention it, and don't give water or juice without advice.</td></tr>
+    <tr><td>Watery, frequent</td><td>Possible diarrhea, and dehydration is the concern. Call if persistent or wet diapers drop.</td></tr></table>
+    <h3>Changing &amp; skin care</h3><ul>
+    <li>Change every 2–3 hours and after every poop. Checking at each feed is an easy habit.</li>
+    <li>Wipe front to back. A little pink vaginal discharge or spotting in the first week is normal for newborn girls.</li>
+    <li>“Brick dust” (orange-pink urate crystals) in early diapers is common. If it lasts past day 4–5, tell your pediatrician.</li>
+    <li>Fold the diaper below the cord stump and keep it dry. Zinc-oxide cream helps redness.</li></ul>`,
+  rhythm: `<h3>A typical newborn day</h3><ul>
+    <li><b>Sleep:</b> 14–17 hours a day, in 2–4 hour stretches. Day and night aren't sorted out yet.</li>
+    <li><b>Awake windows:</b> about 45–60 minutes, which is usually just a feed, a diaper change and some cuddles.</li>
+    <li><b>Feeds:</b> every 2–3 hours around the clock. Night feeds are still necessary.</li>
+    <li><b>Diapers:</b> roughly 8–10 changes a day once milk is in.</li></ul>
+    <h3>Helping day and night sort themselves out</h3><ul>
+    <li>Keep days bright and chatty. Keep nights dim, quiet and boring.</li></ul>
+    <h3>Safe sleep (every sleep)</h3><ul>
+    <li>On her back, on a firm, flat sleep surface with nothing else in it: no pillows, bumpers or loose blankets.</li>
+    <li>Room-share (crib or bassinet in your room) but don't bed-share. Never sleep with her on a sofa or armchair.</li>
+    <li>Offer tummy time only while awake and watched.</li></ul>
+    <h3>Looking after you</h3><ul>
+    <li>Sleep when she sleeps. Ask for help. Keep an eye on incision pain, fever, heavy bleeding and mood, and call your OB if anything feels off.</li></ul>`,
+  call: `<h3>Call the pediatrician right away</h3><ul>
+    <li><b>Rectal temperature ≥ 100.4°F (38°C)</b>, or below 97.5°F (36.4°C), at any age under 3 months.</li>
+    <li>Fewer wet diapers than the day's goal, or no stool in 24+ hours after day 3.</li>
+    <li>Red/bloody, white/pale gray, or (after day 4–5) black stools.</li>
+    <li>Yellow skin or eyes that is spreading or deepening, especially with a sleepy baby who feeds poorly.</li>
+    <li>Refuses several feeds in a row, is hard to wake, or is unusually floppy or fussy.</li>
+    <li>Forceful or green vomiting, a swollen belly, or dark sunken eyes and soft spot.</li>
+    <li>Redness, swelling, pus or a bad smell around the cord stump.</li></ul>
+    <h3>Call 911</h3><ul><li>Trouble breathing, blue or gray lips or face, a seizure, or she can't be woken.</li></ul>
+    <h3>Appointments</h3><ul><li>First pediatric visit within 48–72 hours of hospital discharge, then a weight check about every week or two. Bring this log.</li></ul>`,
+};
+const TABS = [['feeding', 'Feeding'], ['diapers', 'Diapers & poop'], ['rhythm', 'Daily rhythm & sleep'], ['call', 'When to call']];
+let tab = 'feeding';
+function renderTabs() {
+  $('#tabs').innerHTML = TABS.map(([k, l]) => `<button role="tab" aria-selected="${k === tab}" data-tab="${k}">${l}</button>`).join('');
+  $('#tipBody').innerHTML = TIPS[tab];
+}
+
+/* ---------- events ---------- */
+let toastTimer;
+function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, ms); }
+document.addEventListener('click', e => {
+  const l = e.target.closest('[data-log]'); if (l) return openSheet(l.dataset.log);
+  const del = e.target.closest('[data-del]'); if (del) { if (confirm('Delete this entry?')) op({ op: 'delete', id: del.dataset.del }); return; }
+  const tb = e.target.closest('[data-tab]'); if (tb) { tab = tb.dataset.tab; renderTabs(); }
+});
+$('#feedInt').addEventListener('change', e => op({ op: 'settings', settings: { feedInterval: e.target.value } }));
+$('#icsBtn').addEventListener('click', downloadIcs);
+window.addEventListener('resize', () => renderTimeline(Date.now()));
+
+/* ---------- settings dialog ---------- */
+function openSettings() {
+  const f = $('#cfgForm');
+  f.elements.name.value = state.settings.name || ''; f.birth.value = state.settings.birthMs ? localInput(state.settings.birthMs) : '';
+  f.url.value = cfg?.url || ''; f.key.value = cfg?.key || '';
+  $('#cfgOff').hidden = !cfg;
+  $('#cfgDlg').showModal();
+}
+$('#cfgForm').addEventListener('submit', async e => {
+  const f = e.target, v = e.submitter?.value;
+  if (v === 'disconnect') { cfg = null; connected = false; pending = []; savePending(); try { localStorage.removeItem(LS_CFG); } catch {} render(); toast('Disconnected. Data stays on this device.'); return; }
+  if (v !== 'save') return;
+  const settings = {}, b = new Date(f.birth.value).getTime();
+  const nm = f.elements.name.value.trim();
+  if (nm) settings.name = nm;
+  if (!isNaN(b)) settings.birthMs = b;
+  const url = f.url.value.trim(), key = f.key.value.trim();
+  if (url && key && (!cfg || cfg.url !== url || cfg.key !== key)) await connect({ url, key }, settings);
+  else if (Object.keys(settings).length) op({ op: 'settings', settings });
+});
+$('#mode').addEventListener('click', openSettings);
+
+/* ---------- boot ---------- */
+(async function boot() {
+  state = lsGet(LS) || state; state.settings = state.settings || {};
+  pending = lsGet(LS_PEND) || []; cfg = lsGet(LS_CFG);
+  // One-time setup link: https://…/#u=<web app url>&k=<secret>. The hash never leaves the browser.
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('u') && h.get('k')) { history.replaceState(null, '', location.pathname + location.search); renderTabs(); render(); await connect({ url: h.get('u'), key: h.get('k') }, {}); }
+  renderTabs(); render();
+  if (cfg) { await pull(); if (!connected) { serverRev = -1; try { const j = await api('state'); state = j.state; serverRev = j.state.rev; connected = true; } catch {} } render(); flush(); syncCalendar(true); }
+  if (!state.settings.birthMs) openSettings();
+  setInterval(() => { render(); syncCalendar(); }, 60 * 1000);
+  setInterval(pull, 45 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+  window.addEventListener('online', () => { flush(); pull(); });
+})();
+</script>
+</body>
+</html>
