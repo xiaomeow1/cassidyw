@@ -155,7 +155,7 @@ select, input[type="number"], input[type="datetime-local"], input[type="password
 
 dialog { border: 0; border-radius: 24px; padding: 0; width: min(520px, calc(100vw - 24px)); background: var(--surface); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
 dialog::backdrop { background: rgba(0,0,0,.45); }
-dialog form { padding: 18px; display: grid; gap: 14px; }
+dialog form { padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; max-height: calc(100vh - 40px); overflow-y: auto; }
 dialog h2 { font-size: 20px; }
 .field label.l { display: block; font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -263,7 +263,9 @@ const H = 3600e3, M = 60e3;
 const FEED_SLOTS = 4, DIAPER_SLOTS = 3;
 const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1';
 
-const FEED_KINDS = [['breast-l','Breast · Left'],['breast-r','Breast · Right'],['formula','Formula'],['pumped','Pumped milk']];
+const FEED_PARTS = [['breast', 'Breast'], ['formula', 'Formula'], ['pumped', 'Pumped milk']];
+const SIDES = [['L', 'Left'], ['R', 'Right']];
+const LEGACY_FEED = { 'breast-l': 'Breast · Left', 'breast-r': 'Breast · Right', formula: 'Formula', pumped: 'Pumped milk' }; // entries from the first version
 const DIAPER_KINDS = [['wet','Wet'],['dirty','Dirty'],['both','Both']];
 const COLORS = [
   ['black','Black / tarry','#1f1a17'], ['darkgreen','Dark green','#3d4a2a'], ['green','Green','#6b8e3a'],
@@ -429,8 +431,14 @@ function flagFor(e) {
 function detail(e) {
   if (e.type === 'note') return kindName(NOTE_KINDS, e.kind) + (e.amt ? ` · ${e.amt} mL` : '');
   if (e.type === 'feed') {
-    const unit = e.kind.startsWith('breast') ? ' min' : ' oz';
-    return kindName(FEED_KINDS, e.kind) + (e.amt ? ` · ${e.amt}${unit}` : '');
+    if (LEGACY_FEED[e.kind]) return LEGACY_FEED[e.kind] + (e.amt ? ` · ${e.amt}${e.kind.startsWith('breast') ? ' min' : ' oz'}` : '');
+    const parts = String(e.kind).split(',').map(k => {
+      if (k === 'breast') return 'Breast' + (e.sides ? ` (${e.sides.split('').join('+')})` : '') + (e.min ? ` ${e.min} min` : '');
+      if (k === 'formula') return 'Formula' + (e.fMl ? ` ${e.fMl} mL` : '');
+      if (k === 'pumped') return 'Pumped' + (e.pMl ? ` ${e.pMl} mL` : '');
+      return k;
+    });
+    return parts.join(' + ') + (e.fMl && e.pMl ? ` · bottle total ${e.fMl + e.pMl} mL` : '');
   }
   return kindName(DIAPER_KINDS, e.kind) + (e.kind !== 'wet' && e.color ? ` · ${colorName(e.color)}` : '') + (e.cons ? `, ${consName(e.cons)}` : '');
 }
@@ -490,7 +498,10 @@ function renderTiles(now, d) {
   const dirty = dia.filter(l => l.kind === 'dirty' || l.kind === 'both').length;
   const tile = (k, v, goal, ok) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">goal ${goal}</div><div class="st ${ok ? 'ok' : 'low'}">${ok ? '✓ On track' : 'Below goal so far'}</div></div>`;
   const spits = recent.filter(l => l.type === 'note' && l.kind !== 'other'), ml = spits.reduce((a, l) => a + (l.amt || 0), 0);
-  const extra = spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${Math.round(ml)} mL lost` : ''}</div>` : '';
+  const bottle = recent.filter(l => l.type === 'feed' && !LEGACY_FEED[l.kind]);
+  const fSum = bottle.reduce((a, l) => a + (l.fMl || 0), 0), pSum = bottle.reduce((a, l) => a + (l.pMl || 0), 0);
+  const bottleLine = fSum + pSum ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Bottle milk: ${fSum + pSum} mL (formula ${fSum} · pumped ${pSum}). Breast not counted.</div>` : '';
+  const extra = bottleLine + (spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${Math.round(ml)} mL lost` : ''}</div>` : '');
   $('#tiles').innerHTML = extra + tile('Feedings', feeds, '8–12', feeds >= 8) + tile('Wet diapers', wet, wetGoal(d) + '+', wet >= wetGoal(d)) + tile('Dirty diapers', dirty, dirtyGoal(d) + '+', dirty >= dirtyGoal(d));
 }
 
@@ -584,22 +595,34 @@ function downloadIcs() {
 }
 
 /* ---------- log sheet ---------- */
-const chips = (name, opts, sel) => `<div class="chips">${opts.map(o => `<label><input type="radio" name="${name}" value="${o[0]}" ${o[0] === sel ? 'checked' : ''}><span>${o[2] ? `<i class="swatch" style="background:${o[2]}"></i>` : ''}${o[1]}</span></label>`).join('')}</div>`;
+const chips = (name, opts, sel, type = 'radio') => `<div class="chips">${opts.map(o => `<label><input type="${type}" name="${name}" value="${o[0]}" ${(Array.isArray(sel) ? sel.includes(o[0]) : o[0] === sel) ? 'checked' : ''}><span>${o[2] ? `<i class="swatch" style="background:${o[2]}"></i>` : ''}${o[1]}</span></label>`).join('')}</div>`;
 const localInput = t => { const d = new Date(t - new Date(t).getTimezoneOffset() * M); return d.toISOString().slice(0, 16); };
 
 function openSheet(type) {
   const f = $('#sheetForm'), now = Date.now();
   if (type === 'feed') {
     const last = byType('feed').pop();
-    const def = last?.kind === 'breast-l' ? 'breast-r' : last?.kind === 'breast-r' ? 'breast-l' : last?.kind || 'breast-l';
+    const lastParts = last && !LEGACY_FEED[last.kind] ? String(last.kind).split(',') : ['breast'];
+    const nextSide = last?.sides === 'L' ? ['R'] : last?.sides === 'R' ? ['L'] : ['L'];
+    const num = (id, ph) => `<input type="number" id="${id}" name="${id}" min="0" step="any" inputmode="decimal" placeholder="${ph}" style="width:100%">`;
     f.innerHTML = `<h2>🍼 Log feeding</h2>
-      <div class="field"><label class="l">Type</label>${chips('kind', FEED_KINDS, def)}</div>
-      <div class="field"><label class="l" id="amtL" for="amt">Minutes (optional)</label><input type="number" id="amt" name="amt" min="0" step="any" inputmode="decimal" style="width:100%"></div>
+      <div class="field"><label class="l">What did she have? (pick all that apply)</label>${chips('parts', FEED_PARTS, lastParts, 'checkbox')}</div>
+      <div class="field" id="secBreast"><label class="l">Breast side(s)</label>${chips('sides', SIDES, nextSide, 'checkbox')}
+        <label class="l" for="min" style="margin-top:12px">Minutes (optional)</label>${num('min', 'e.g. 15')}</div>
+      <div class="field" id="secFormula"><label class="l" for="fMl">Formula, mL</label>${num('fMl', 'e.g. 60')}</div>
+      <div class="field" id="secPumped"><label class="l" for="pMl">Pumped milk, mL</label>${num('pMl', 'e.g. 30')}</div>
+      <div class="callout" id="bottleTotal" style="margin:0"></div>
       <div class="field"><label class="l" for="when">When</label><input type="datetime-local" id="when" name="when" value="${localInput(now)}" max="${localInput(now + H)}" style="width:100%"></div>
-      <div class="field"><label class="l" for="note">Note (optional)</label><input type="text" id="note" name="note" placeholder="latched well, spit up, sleepy…" style="width:100%"></div>
+      <div class="field"><label class="l" for="note">Note (optional)</label><input type="text" id="note" name="note" placeholder="latched well, sleepy…" style="width:100%"></div>
       <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
-    const sync = () => { const b = f.kind.value.startsWith('breast'); $('#amtL').textContent = b ? 'Minutes (optional)' : 'Ounces (optional)'; };
-    f.onchange = sync; sync();
+    const sync = () => {
+      const on = k => f.querySelector(`input[name=parts][value=${k}]`).checked;
+      $('#secBreast').hidden = !on('breast'); $('#secFormula').hidden = !on('formula'); $('#secPumped').hidden = !on('pumped');
+      const tot = (on('formula') ? +f.elements.fMl.value || 0 : 0) + (on('pumped') ? +f.elements.pMl.value || 0 : 0);
+      $('#bottleTotal').hidden = !(on('formula') || on('pumped'));
+      $('#bottleTotal').innerHTML = `<b>Bottle total: ${tot} mL</b>Breast isn't counted in the total.`;
+    };
+    f.onchange = sync; f.oninput = sync; sync();
   } else if (type === 'note') {
     f.innerHTML = `<h2>📝 Log spit-up or note</h2>
       <div class="field"><label class="l">What happened?</label>${chips('kind', NOTE_KINDS, 'spitup')}</div>
@@ -607,7 +630,7 @@ function openSheet(type) {
       <div class="field"><label class="l" for="note">Notes</label><input type="text" id="note" name="note" placeholder="right after feeding, gassy, fussy…" style="width:100%"></div>
       <div class="field"><label class="l" for="when">When</label><input type="datetime-local" id="when" name="when" value="${localInput(now)}" max="${localInput(now + H)}" style="width:100%"></div>
       <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
-    f.onchange = null;
+    f.onchange = null; f.oninput = null;
   } else {
     f.innerHTML = `<h2>💧 Log diaper change</h2>
       <div class="field"><label class="l">What was in it?</label>${chips('kind', DIAPER_KINDS, 'wet')}</div>
@@ -618,7 +641,7 @@ function openSheet(type) {
       <div class="field"><label class="l" for="when">When</label><input type="datetime-local" id="when" name="when" value="${localInput(now)}" max="${localInput(now + H)}" style="width:100%"></div>
       <div class="field"><label class="l" for="note">Note (optional)</label><input type="text" id="note" name="note" placeholder="rash, diaper cream…" style="width:100%"></div>
       <div class="actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
-    f.onchange = () => { $('#poop').hidden = f.kind.value === 'wet'; };
+    f.oninput = null; f.onchange = () => { $('#poop').hidden = f.kind.value === 'wet'; };
   }
   f.dataset.type = type;
   $('#sheet').showModal();
@@ -626,10 +649,24 @@ function openSheet(type) {
 $('#sheetForm').addEventListener('submit', e => {
   const f = e.target, btn = e.submitter;
   if (!btn || btn.value !== 'save') return;
-  const type = f.dataset.type, when = new Date(f.when.value).getTime();
-  const entry = { id: uid(), type, t: isNaN(when) ? Date.now() : when, kind: f.kind.value, note: f.note.value.trim() || undefined };
-  if (type === 'feed' || type === 'note') entry.amt = parseFloat(f.amt.value) || undefined;
-  else if (entry.kind !== 'wet') { entry.color = f.color.value || undefined; entry.cons = f.cons.value || undefined; }
+  const type = f.dataset.type, el = f.elements, when = new Date(el.when.value).getTime();
+  const entry = { id: uid(), type, t: isNaN(when) ? Date.now() : when, note: el.note.value.trim() || undefined };
+  if (type === 'feed') {
+    const parts = [...f.querySelectorAll('input[name=parts]:checked')].map(i => i.value);
+    if (!parts.length) { e.preventDefault(); toast('Pick breast, formula or pumped milk'); return; }
+    entry.kind = parts.join(',');
+    if (parts.includes('breast')) {
+      entry.sides = [...f.querySelectorAll('input[name=sides]:checked')].map(i => i.value).join('') || undefined;
+      entry.min = parseFloat(el.min.value) || undefined;
+    }
+    if (parts.includes('formula')) entry.fMl = parseFloat(el.fMl.value) || undefined;
+    if (parts.includes('pumped')) entry.pMl = parseFloat(el.pMl.value) || undefined;
+    entry.amt = (entry.fMl || 0) + (entry.pMl || 0) || undefined;   // bottle total only, never breast
+  } else {
+    entry.kind = el.kind.value;
+    if (type === 'note') entry.amt = parseFloat(el.amt.value) || undefined;
+    else if (entry.kind !== 'wet') { entry.color = el.color.value || undefined; entry.cons = el.cons.value || undefined; }
+  }
   op({ op: 'add', entry });
   const fl = flagFor(entry);
   toast(fl ? fl.msg : { feed: 'Feeding logged', diaper: 'Diaper logged', note: 'Note logged' }[type], fl ? 6000 : 2200);
