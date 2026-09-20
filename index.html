@@ -222,6 +222,15 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
 .stat { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .stat:last-child { border-bottom: 0; }
 .stat span:first-child { color: var(--ink-2); }
+.nx { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.nx:last-of-type { border-bottom: 0; }
+.nx small { display: block; color: var(--ink-2); font-size: 12px; margin-top: 1px; }
+.nx .r { text-align: right; font-variant-numeric: tabular-nums; }
+.nx .r b { font-size: 18px; }
+.nx .r small.due { color: var(--warn); font-weight: 650; }
+.twoBtn { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.twoBtn .logbtn { margin-top: 12px; }
+.up { margin-top: 12px; font-size: 13px; color: var(--ink-2); }
 </style>
 </head>
 <body>
@@ -297,8 +306,9 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   </div>
 
   <div class="view" id="v-pump" hidden>
+    <div class="card tracker" id="pfNext" style="margin-bottom:12px"></div>
     <div class="card tracker" id="pumpCard"></div>
-    <section><div class="sec-title">Last 24 hours</div><div class="tiles" id="pumpTiles"></div><p class="fine" id="pumpStash" style="margin:8px 2px 0"></p></section>
+    <section><div class="sec-title">Last 24 hours</div><div class="tiles" id="pumpTiles"></div><div class="fine" id="pumpStash" style="margin:8px 2px 0;display:grid;gap:4px"></div></section>
     <section><div class="sec-title">Last 7 days</div><div class="card"><div class="bars" id="pumpBars"></div></div></section>
     <section><div class="sec-title">Sessions</div><div class="card"><ul class="log" id="pumpLog"></ul></div></section>
   </div>
@@ -313,7 +323,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
 
 <nav class="tabbar" id="tabbar" aria-label="Sections">
   <button data-view="track" aria-selected="true"><span>🍼</span>Track</button>
-  <button data-view="pump" aria-selected="false"><span>🥛</span>Pumping</button>
+  <button data-view="pump" aria-selected="false"><span>🥛</span>Pump / Feed</button>
   <button data-view="journal" aria-selected="false"><span>📖</span>Journal</button>
 </nav>
 
@@ -336,7 +346,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
 /* ---------- constants ---------- */
 let BIRTH = Date.now(), NAME = 'Baby';
 const H = 3600e3, M = 60e3;
-const FEED_SLOTS = 4, DIAPER_SLOTS = 3;
+const FEED_SLOTS = 4, DIAPER_SLOTS = 3, PUMP_SLOTS = 3;
 const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1', LS_VIEW = 'newborn-view-v1';
 
 const FEED_PARTS = [['breast', 'Breast'], ['formula', 'Formula'], ['pumped', 'Pumped milk']];
@@ -501,6 +511,7 @@ function feedInterval() {
   return fixed > 0 ? fixed * H : interval(byType('feed'), 2.5 * H, 1.5 * H, 3 * H);
 }
 const diaperInterval = () => interval(byType('diaper'), 2.5 * H, 1.5 * H, 3.5 * H);
+const pumpInterval = () => interval(byType('pump'), 3 * H, 2 * H, 4 * H);
 
 function projection(list, iv, n) {
   if (!list.length) return null;
@@ -512,9 +523,10 @@ function projection(list, iv, n) {
 function buildSlots() {
   const out = [];
   const f = projection(byType('feed'), feedInterval(), FEED_SLOTS);
-  const d = projection(byType('diaper'), diaperInterval(), DIAPER_SLOTS);
+  const d = projection(byType('diaper'), diaperInterval(), DIAPER_SLOTS), pu = projection(byType('pump'), pumpInterval(), PUMP_SLOTS);
   const note = iv => `Estimated from ${NAME}'s recent pattern (about every ${dur(iv)}). Auto-updated by the tracker.`;
   if (f) f.times.forEach((t, i) => out.push({ uid: `feed-${i + 1}`, kind: 'feed', title: `🍼 ${NAME} · feeding`, notes: note(f.iv), start: t, end: t + 20 * M }));
+  if (pu) pu.times.forEach((t, i) => out.push({ uid: `pump-${i + 1}`, kind: 'pump', title: `🥛 ${NAME} · pumping`, notes: note(pu.iv), start: t, end: t + 30 * M }));
   if (d) d.times.forEach((t, i) => out.push({ uid: `diaper-${i + 1}`, kind: 'diaper', title: `💧 ${NAME} · diaper check`, notes: note(d.iv), start: t, end: t + 15 * M }));
   return out;
 }
@@ -704,7 +716,7 @@ function renderTimeline(now) {
   const rows = { feed: 56, diaper: 108, note: 160 };
   tlItems = [];
   state.logs.filter(l => rows[l.type] && l.t >= t0 && l.t <= t1).forEach(l => tlItems.push({ x: x(l.t), y: rows[l.type], type: l.type, pred: false, tip: `${fmtWhen(l.t)} · ${detail(l)}` }));
-  buildSlots().forEach(s => { if (s.start <= t1) tlItems.push({ x: x(s.start), y: rows[s.kind], type: s.kind, pred: true, tip: `≈ ${fmtWhen(s.start)} · predicted` }); });
+  buildSlots().forEach(s => { if (rows[s.kind] && s.start <= t1) tlItems.push({ x: x(s.start), y: rows[s.kind], type: s.kind, pred: true, tip: `≈ ${fmtWhen(s.start)} · predicted` }); });
   let svg = `<svg viewBox="0 0 ${w} ${h}" height="${h}" role="img" aria-label="Timeline of feedings and diaper changes over the last 24 hours">`;
   svg += `<text x="${padX}" y="${rows.feed - 22}">Feedings</text><text x="${padX}" y="${rows.diaper - 22}">Diapers</text><text x="${padX}" y="${rows.note - 22}">Spit-up / notes</text>`;
   Object.values(rows).forEach(y => { svg += `<line x1="${padX}" x2="${w - padX}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`; });
@@ -1099,17 +1111,33 @@ $('#sheetForm').addEventListener('submit', e => {
 /* ---------- pumping tab ---------- */
 function renderPump(now) {
   const all = byType('pump'), last = all[all.length - 1], u = defaultUnit('pump'), d = dayOfLife(now);
-  const iv = interval(all, 3 * H, 2 * H, 4 * H), since = last ? now - last.t : 0;
+  const iv = pumpInterval(), since = last ? now - last.t : 0;
   const tip = !last ? 'Early on, aim for about 8 sessions in 24 hours, including one overnight. Log your first session to start the reminders.'
     : since > 4 * H ? `It has been ${dur(since)}. Try to pump at least every 3–4 hours in the early weeks.`
     : 'On track. About 8 sessions in 24 hours, including one overnight, helps build supply in the early weeks.';
   heroCard('#pumpCard', 'pump-c', 'Pumping', all, iv, `<button class="logbtn pump-c" data-log="pump">🥛 Log pumping session</button>`, tip, ['Pumping tips', TIPS.pump]);
   const rec = all.filter(l => now - l.t < 24 * H), total = rec.reduce((a, l) => a + (l.amt || 0), 0);
+  const feeds24 = state.logs.filter(l => l.type === 'feed' && now - l.t < 24 * H).map(normFeed);
   const tile = (k, v, g) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">${g}</div></div>`;
-  $('#pumpTiles').innerHTML = tile('Sessions', rec.length, 'goal about 8') + tile('Total', total ? round1(fromMl(total, u)) : 0, unitName(u)) + tile('Average', rec.length && total ? round1(fromMl(total / rec.length, u)) : 0, `${unitName(u)} per session`);
+  $('#pumpTiles').innerHTML = tile('Feedings', feeds24.length, 'goal 8–12') + tile('Pump sessions', rec.length, 'goal about 8') + tile('Pumped', total ? round1(fromMl(total, u)) : 0, unitName(u));
+  const bf = feeds24.filter(l => String(l.kind).split(',').includes('breast')), bmin = bf.reduce((a, l) => a + (l.min || 0), 0);
+  const fS = feeds24.reduce((a, l) => a + (l.fMl || 0), 0), pS = feeds24.reduce((a, l) => a + (l.pMl || 0), 0);
+  const lines = [`Breast: ${bf.length} feeding${bf.length === 1 ? '' : 's'}${bmin ? `, ${bmin} min logged` : ''}.`, fS + pS ? `Bottle milk: ${fmtVol(fS + pS, u)} (formula ${fmtVol(fS, u)} · pumped ${fmtVol(pS, u)}). Breast not counted.` : 'Bottle milk: none logged.'];
+  // next feed and next pump, side by side
+  const nx = (cls, label, list, iv) => {
+    const last = list[list.length - 1];
+    if (!last) return `<div class="nx"><i class="dot ${cls}"></i><div><b>${label}</b><small>nothing logged yet</small></div><div></div></div>`;
+    const p = projection(list, iv, 1), due = p.raw <= now;
+    return `<div class="nx"><i class="dot ${cls}"></i><div><b>${label}</b><small>last ${fmtT(last.t)} · ${dur(now - last.t)} ago</small></div>
+      <div class="r"><b>${fmtT(due ? p.raw : p.times[0])}</b><small class="${due ? 'due' : ''}">${due ? (now - p.raw < 5 * M ? 'due now' : `overdue ${dur(now - p.raw)}`) : `in ${dur(p.raw - now)}`}</small></div></div>`;
+  };
+  const up = buildSlots().filter(x => x.kind === 'feed' || x.kind === 'pump').sort((a, b) => a.start - b.start).slice(0, 6);
+  $('#pfNext').innerHTML = `<div class="head"><i class="dot pump-c"></i>Next feed &amp; next pump</div>${nx('feed-c', '🍼 Feeding', byType('feed'), feedInterval())}${nx('pump-c', '🥛 Pumping', all, iv)}
+    <div class="twoBtn"><button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button><button class="logbtn pump-c" data-log="pump">🥛 Log pumping</button></div>
+    ${up.length ? `<div class="up"><b>Coming up:</b> ${up.map(x => `<span class="pill2">${fmtT(x.start)} ${x.kind === 'feed' ? '🍼' : '🥛'}</span>`).join('')}</div>` : ''}`;
   const kept = all.filter(l => l.store !== 'discarded').reduce((a, l) => a + (l.amt || 0), 0);
   const used = state.logs.filter(l => l.type === 'feed').map(normFeed).reduce((a, l) => a + (l.pMl || 0), 0);
-  $('#pumpStash').textContent = all.length ? `Estimated pumped milk on hand: ${fmtVol(Math.max(0, kept - used), u)} (${fmtVol(kept, u)} pumped minus ${fmtVol(used, u)} fed). It can't see milk you've thawed, spilled or thrown away, so use it as a guide.` : '';
+  $('#pumpStash').innerHTML = lines.map(x => `<span>${x}</span>`).join('') + (all.length ? `<span>Estimated pumped milk on hand: ${fmtVol(Math.max(0, kept - used), u)} (${fmtVol(kept, u)} pumped minus ${fmtVol(used, u)} fed). It can't see milk you've thawed, spilled or thrown away, so use it as a guide.</span>` : '');
   // last 7 days
   const days = Array.from({ length: 7 }, (_, i) => { const dt = new Date(now); dt.setHours(0, 0, 0, 0); dt.setDate(dt.getDate() - (6 - i)); return dt; });
   const rows = days.map(dt => { const t0 = dt.getTime(), t1 = t0 + 24 * H, ss = all.filter(l => l.t >= t0 && l.t < t1); return { dt, n: ss.length, ml: ss.reduce((a, l) => a + (l.amt || 0), 0) }; });
