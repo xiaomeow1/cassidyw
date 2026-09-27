@@ -88,6 +88,8 @@ section { margin-top: 16px; }
 .feed-c { background: var(--feed); } .diaper-c { background: var(--diaper); } .note-c { background: var(--note); } .pump-c { background: var(--pump); } .journal-c { background: var(--journal); }
 .tracker .big { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin-top: 10px; font-variant-numeric: tabular-nums; }
 .tracker .sub { color: var(--ink-2); font-size: 14px; margin-top: 2px; }
+.timerRun { text-align: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.timerClock { font-size: 44px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--feed); }
 .next { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .next .lbl { color: var(--ink-2); font-size: 13px; }
 .next .val { font-weight: 650; font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -352,9 +354,10 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
 let BIRTH = Date.now(), NAME = 'Baby';
 const H = 3600e3, M = 60e3;
 const FEED_SLOTS = 4, PUMP_SLOTS = 3;
-const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1', LS_VIEW = 'newborn-view-v1';
+const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1', LS_VIEW = 'newborn-view-v1', LS_TIMER = 'newborn-timer-v1';
 
-const FEED_SRC = [['bottle', '🍼 Bottle'], ['breast', '🤱 Breast']];
+const FEED_PARTS = [['breast', 'Breast'], ['formula', 'Formula'], ['pumped', 'Pumped milk']];
+const SIDES = [['L', 'Left'], ['R', 'Right']];
 const LEGACY_FEED = { 'breast-l': 'Breast · Left', 'breast-r': 'Breast · Right', formula: 'Formula', pumped: 'Pumped milk' }; // entries from the first version
 const NOTE_KINDS = [['spitup','Spit-up'],['vomit','Vomit'],['other','Other note']];
 const STORE = [['fridge', 'Fridge'], ['freezer', 'Freezer'], ['fed', 'Fed to baby'], ['discarded', 'Discarded / spilled']];
@@ -635,18 +638,36 @@ function heroCard(el, cls, title, list, iv, actions, tip, more) {
   $(el).innerHTML = html + actions + `<p class="tip-line">💡 ${tip}</p><details class="more"><summary>${more[0]}</summary><div class="tips">${more[1]}</div></details>`;
 }
 
-// What a one-tap "same as last" feed would record: same source and amount.
+// What a one-tap "same as last" feed would record: same milk, opposite breast side.
 function repeatEntry(last) {
   if (!last) return null;
-  const v = feedView(last), e = { type: 'feed', kind: v.src === 'breast' ? 'breast' : 'bottle' };
-  if (v.amt) { e.amt = v.amt; if (v.unit) e.unit = v.unit; }
+  const n = normFeed(last), e = { type: 'feed', kind: n.kind };
+  if (n.sides) e.sides = n.sides.length === 1 ? (n.sides === 'L' ? 'R' : 'L') : n.sides;
+  if (n.min) e.min = n.min;
+  if (n.fMl) e.fMl = n.fMl;
+  if (n.pMl) e.pMl = n.pMl;
+  if (e.fMl || e.pMl) { e.amt = (e.fMl || 0) + (e.pMl || 0); if (n.unit) e.unit = n.unit; }
   return e;
 }
-// A breastfeed with a known amount also mirrors into the Pumping tab, since it's milk delivered
-// straight from the source — the reverse of the pump tab's own "fed to baby" option.
-function feedPumpEcho(entry) {
-  if (entry.kind !== 'breast' || !entry.amt) return null;
-  return { id: uid(), type: 'pump', t: entry.t, amt: entry.amt, unit: entry.unit, store: 'fed', note: 'Breastfed (auto-logged)' };
+// Keeps a feed's mirrored Pumping-tab entry in sync whenever it includes breastfeeding with a
+// duration: creates one, updates it on a later edit, or removes it if breastfeeding or the duration
+// is dropped. This is the reverse of the pump tab's own "fed to baby?" link, and covers the point of
+// the Pumping tab (milk production and frequency) even for milk that never touched a pump.
+// Mutates `entry.pumpEchoId`.
+function syncFeedPumpEcho(entry, ed) {
+  const prevId = ed?.pumpEchoId, prev = prevId ? state.logs.find(l => l.id === prevId) : null;
+  const wants = String(entry.kind).split(',').includes('breast') && entry.min;
+  if (wants) {
+    const echo = { id: prevId || uid(), type: 'pump', t: entry.t, dur: entry.min, fedAt: entry.t, feedId: entry.id, note: 'Breastfed (auto-logged)' };
+    entry.pumpEchoId = echo.id;
+    return { op: prevId ? { op: 'update', entry: echo } : { op: 'add', entry: echo },
+      undo: prev ? () => op({ op: 'update', entry: prev }) : () => op({ op: 'delete', id: echo.id }) };
+  }
+  if (!wants && prevId) {
+    entry.pumpEchoId = undefined;
+    return { op: { op: 'delete', id: prevId }, undo: () => { if (prev) op({ op: 'add', entry: prev }); } };
+  }
+  return null;
 }
 function counts24(now) {
   return { feeds: state.logs.filter(l => l.type === 'feed' && now - l.t < 24 * H).length };
@@ -658,11 +679,59 @@ function feedTiming() {
   if (since > 3 * H) return `It has been ${dur(since)}. Newborns shouldn't go more than 3 hours between feeds: wake her gently if she is asleep.`;
   return null;
 }
+
+/* ---------- nursing timer: start/stop instead of typing a duration afterwards ----------
+   Local to this device only (localStorage), so it survives a reload or the phone locking, but two
+   devices don't see the same running timer. */
+let timer = null; // { startedAt, side } or null
+const fmtElapsed = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+function lastBreastSide() {
+  const last = byType('feed').map(normFeed).filter(n => String(n.kind).split(',').includes('breast') && n.sides).pop();
+  return last && last.sides === 'L' ? 'R' : 'L';
+}
+function timerStart() { timer = { startedAt: Date.now(), side: lastBreastSide() }; lsSet(LS_TIMER, timer); render(); }
+function timerCancel() { timer = null; lsSet(LS_TIMER, null); render(); }
+function timerSwitch() { if (!timer) return; if (timer.side.length === 1) timer.side = 'LR'; lsSet(LS_TIMER, timer); render(); }
+// Ends the timer and hands back a plain feed entry, without touching the log — used by both the
+// in-app button (which still opens the sheet to add formula/pumped, if any) and the hands-free path.
+function timerStopEntry() {
+  if (!timer) return null;
+  const t = timer, min = Math.max(1, Math.round((Date.now() - t.startedAt) / M));
+  timer = null; lsSet(LS_TIMER, null);
+  return { id: uid(), type: 'feed', t: t.startedAt, kind: 'breast', sides: t.side, min };
+}
+function timerStopAndLog() {   // in-app "Stop & log" button: review in the sheet before saving
+  if (!timer) return;
+  const t = timer, min = Math.max(1, Math.round((Date.now() - t.startedAt) / M));
+  timer = null; lsSet(LS_TIMER, null);
+  openSheet('feed', { timer: { t: t.startedAt, min, sides: t.side } });
+}
+function timerStopQuiet() {    // Siri/Shortcuts hash hook: log immediately, no screen needed
+  const entry = timerStopEntry(); if (!entry) return;
+  const sync = syncFeedPumpEcho(entry, null);
+  op({ op: 'add', entry });
+  if (sync) op(sync.op);
+  toast(`Logged: ${detail(entry)}${sync ? ' (also added to Pumping)' : ''}`, 8000, { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (sync) sync.undo(); } });
+}
+setInterval(() => { if (timer) { const el = $('#timerClock'); if (el) el.textContent = fmtElapsed(Date.now() - timer.startedAt); } }, 1000);
+
 function renderHero() {
   const last = byType('feed').pop(), rep = repeatEntry(last);
-  const feedActions = rep
-    ? `<button class="logbtn feed-c" data-quick="feed-repeat">↻ Same as last<small>${esc(detail(rep))}</small></button><button class="btn wide2" data-log="feed">Change or log something different…</button>`
-    : `<button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button>`;
+  let feedActions;
+  if (timer) {
+    const sideLbl = timer.side === 'LR' ? 'both sides' : timer.side === 'R' ? 'right side' : 'left side';
+    feedActions = `<div class="timerRun">
+        <div class="timerClock" id="timerClock">${fmtElapsed(Date.now() - timer.startedAt)}</div>
+        <div class="fine" style="margin:2px 0 0">Nursing · ${sideLbl} · started ${fmtT(timer.startedAt)}</div>
+        <div class="twoBtn" style="margin-top:10px"><button type="button" class="btn" data-timer="switch">⇄ Switch side</button><button type="button" class="btn" data-timer="cancel">✕ Cancel</button></div>
+        <button type="button" class="logbtn feed-c" data-timer="stop">■ Stop &amp; log feeding</button>
+      </div>`;
+  } else {
+    feedActions = (rep
+      ? `<button class="logbtn feed-c" data-quick="feed-repeat">↻ Same as last<small>${esc(detail(rep))}</small></button><button class="btn wide2" data-log="feed">Change or log something different…</button>`
+      : `<button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button>`)
+      + `<button type="button" class="btn wide2" data-timer="start">▶ Start nursing timer</button>`;
+  }
   const feedTip = last ? (feedTiming() || 'On rhythm. Feed on cue: rooting, hands to mouth or lip-smacking come before crying.') : 'Newborns feed 8–12 times a day, about every 2–3 hours. Log the first one to start the predictions.';
   heroCard('#feedCard', 'feed-c', 'Feeding', byType('feed'), feedInterval(), feedActions, feedTip, ['Feeding tips', TIPS.feeding]);
 }
@@ -820,31 +889,53 @@ const volRange = (a, b, u) => `${fmtVol(a, u).replace(/ (mL|oz)$/, '')}–${fmtV
 const setErr = m => { $('#ferr').textContent = m; $('#ferr').hidden = false; };
 
 const BUILDERS = {
-  feed(ed, at, d) {
-    const last = byType('feed').filter(l => !ed || l.id !== ed.id).pop(), lastV = last && feedView(last);
-    const src = ed ? (isSimpleFeed(ed) ? ed.kind : feedView(ed).src) : (lastV?.src === 'mixed' ? 'bottle' : lastV?.src) || 'bottle';
-    const unit = ed?.unit || lastV?.unit || defaultUnit('feed');
-    const r = bottleRange(d), mid = Math.round((r[0] + r[1]) / 2 / 5) * 5;
-    const amt = ed ? (isSimpleFeed(ed) ? ed.amt : feedView(ed).amt) : (lastV?.amt ?? (src === 'bottle' ? mid : undefined));
+  feed(ed, at, d, opts = {}) {
+    const timerData = !ed && opts.timer; // arriving from "Stop & log feeding": prefill breast + duration
+    const src = ed ? normFeed(ed) : null;
+    const last = byType('feed').filter(l => !ed || l.id !== ed.id).pop(), lastN = last && normFeed(last), rep = repeatEntry(last);
+    const unit = src?.unit || defaultUnit('feed'), r = bottleRange(d), mid = Math.round((r[0] + r[1]) / 2 / 5) * 5;
+    const parts = timerData ? ['breast'] : src ? String(src.kind).split(',') : rep ? rep.kind.split(',') : ['breast'];
+    const sides = timerData ? timerData.sides.split('') : src ? (src.sides || '').split('').filter(Boolean) : rep?.sides ? rep.sides.split('') : ['L'];
+    const minVal = timerData ? timerData.min : src?.min ? src.min : rep?.min;
+    const fv = src ? (src.fMl ? fromMl(src.fMl, unit) : '') : fromMl(lastN?.fMl ?? mid, unit);
+    const pv = src ? (src.pMl ? fromMl(src.pMl, unit) : '') : fromMl(lastN?.pMl ?? mid, unit);
+    const mins = [...new Set(['5', '10', '15', '20', '30', ...(minVal ? [String(minVal)] : [])])].sort((a, b) => a - b);
+    const atFinal = timerData ? timerData.t : at;
     return {
-      title: '🍼 Log feeding', vol: ['amt'], canon: { amt },
-      body: `<div class="field"><label class="l">How did she eat?</label>${chips('src', FEED_SRC, src)}<div id="ctxSrc"></div></div>
+      title: '🍼 Log feeding', vol: ['fMl', 'pMl'], canon: { fMl: src?.fMl, pMl: src?.pMl },
+      body: `<div class="field"><label class="l">What did she have? (pick all that apply)</label>${chips('parts', FEED_PARTS, parts, 'checkbox')}<div id="ctxTiming"></div></div>
+        <div class="field" id="secBreast"><label class="l">Breast side(s)</label>${chips('sides', SIDES, sides, 'checkbox')}
+          <label class="l" style="margin-top:12px">Minutes (optional)</label>${chips('min', [['', 'Skip'], ...mins.map(m => [m, m])], minVal ? String(minVal) : '')}<div id="ctxBreast"></div></div>
         ${unitField(unit)}
-        <div class="field"><label class="l">Amount (optional)</label>${stepper('amt', amt != null ? fromMl(amt, unit) : '', { ml: 10 })}<div id="ctxAmt"></div></div>
-        ${whenField(at, ed && at)}${noteField('latched well, sleepy, spit up…', ed?.note)}`,
+        <div class="field" id="secFormula"><label class="l">Formula</label>${stepper('fMl', fv, { ml: 5 })}<div id="ctxFormula"></div></div>
+        <div class="field" id="secPumped"><label class="l">Pumped milk</label>${stepper('pMl', pv, { ml: 5 })}<div id="ctxPumped"></div></div>
+        <div class="callout" id="bottleTotal" style="margin:0"></div>
+        ${whenField(atFinal, (ed || timerData) && atFinal)}${noteField('latched well, sleepy…', ed?.note)}`,
       update(f) {
-        const s = f.elements.src.value, u = f.elements.unit.value, amtV = toMl(parseFloat(f.elements.amt.value) || 0, u);
+        const on = k => f.querySelector(`input[name=parts][value=${k}]`).checked, u = f.elements.unit.value;
+        $('#secBreast').hidden = !on('breast'); $('#secFormula').hidden = !on('formula'); $('#secPumped').hidden = !on('pumped');
+        $('#secUnit').hidden = !(on('formula') || on('pumped'));
+        const fm = on('formula') ? +f.elements.fMl.value || 0 : 0, pm = on('pumped') ? +f.elements.pMl.value || 0 : 0, tot = fm + pm;
+        $('#bottleTotal').hidden = !(on('formula') || on('pumped'));
+        $('#bottleTotal').innerHTML = `<b>Bottle total: ${round1(tot)} ${unitName(u)}</b>Breast isn't counted in the total.` +
+          (toMl(tot, u) > r[1] * 1.5 ? `<div class="ctx watch">${round1(tot)} ${unitName(u)} is above the usual amount for day ${d}. Bigger volumes can bring more spit-up: offer less and let her ask for more.</div>` : '');
         const timing = ed ? null : feedTiming();
-        $('#ctxSrc').innerHTML = ctxHtml([
-          ...(timing ? [{ level: 'ok', text: timing }] : []),
-          { level: 'ok', text: s === 'breast' ? "Breastfeeding also updates the Pump / Feed tab when you enter an amount, so her intake stays in one total." : `Typical bottle amount on day ${d}: ${volRange(r[0], r[1], u)}. Pace the bottle and stop at fullness cues.` },
-        ]);
-        $('#ctxAmt').innerHTML = (s === 'bottle' && amtV > r[1] * 1.5) ? ctxHtml([{ level: 'watch', text: `${round1(fromMl(amtV, u))} ${unitName(u)} is above the usual amount for day ${d}. Bigger volumes can bring more spit-up.` }]) : '';
+        $('#ctxTiming').innerHTML = timing ? ctxHtml([{ level: 'ok', text: timing }]) : '';
+        $('#ctxBreast').innerHTML = ctxHtml([{ level: 'ok', text: 'Start on the side she finished on last time. A good latch: wide mouth, lips flanged out, steady swallowing. After a C-section, football hold or side-lying keeps weight off your incision.' + (on('breast') ? ' Logging a duration also updates the Pump / Feed tab, to track how often and how long she nurses — try the ▶ timer on the Feeding card next time to fill this in automatically.' : '') }]);
+        $('#ctxFormula').innerHTML = ctxHtml([{ level: 'ok', text: `Typical on day ${d}: ${volRange(r[0], r[1], u)} per feed. Pace the bottle, stop at fullness cues, toss leftovers after 1 hour.` }]);
+        $('#ctxPumped').innerHTML = ctxHtml([{ level: 'ok', text: 'Room temperature up to 4 h · fridge 4 days · freezer about 6 months. Warm in a bowl of warm water and swirl, don\'t shake.' }]);
       },
       collect(f, entry) {
-        const el = f.elements, u = el.unit.value;
-        entry.kind = el.src.value;
-        entry.amt = readMl(el.amt, u) || undefined;
+        const el = f.elements, u = el.unit.value, parts = [...f.querySelectorAll('input[name=parts]:checked')].map(i => i.value);
+        if (!parts.length) return 'Pick breast, formula or pumped milk.';
+        entry.kind = parts.join(',');
+        if (parts.includes('breast')) {
+          entry.sides = [...f.querySelectorAll('input[name=sides]:checked')].map(i => i.value).join('') || undefined;
+          entry.min = parseFloat(el.min.value) || undefined;
+        }
+        if (parts.includes('formula')) entry.fMl = readMl(el.fMl, u) || undefined;
+        if (parts.includes('pumped')) entry.pMl = readMl(el.pMl, u) || undefined;
+        entry.amt = (entry.fMl || 0) + (entry.pMl || 0) || undefined;   // bottle total only, never breast
         if (entry.amt) entry.unit = u;
       },
     };
@@ -879,7 +970,7 @@ const BUILDERS = {
 
   pump(ed, at, d) {
     const last = byType('pump').filter(l => !ed || l.id !== ed.id).pop();
-    const unit = ed?.unit || defaultUnit('pump'), step = d <= 5 ? 5 : 10;
+    const unit = ed?.unit || defaultUnit('pump');
     const v = (ml) => ml ? fromMl(ml, unit) : '';
     const src = ed || {};
     const expect = u => d <= 2 ? 'Just drops to a few mL of colostrum is normal and valuable. Hand expression can work better than the pump at first.'
@@ -897,10 +988,10 @@ const BUILDERS = {
       title: '🥛 Pumping session', vol: ['tot', 'lMl', 'rMl'], canon: { tot: src.amt, lMl: src.lMl, rMl: src.rMl },
       body: `<div class="field"><label class="l">Duration, minutes</label>${stepper('dur', src.dur ?? last?.dur ?? 15, { fix: 5 })}<div id="ctxDur"></div></div>
         ${unitField(unit)}
-        <div class="field"><label class="l">Total pumped</label>${stepper('tot', v(src.amt ?? last?.amt), { ml: step * 2 })}<div id="ctxVol"></div></div>
+        <div class="field"><label class="l">Total pumped</label>${stepper('tot', v(src.amt ?? last?.amt), { ml: 5 })}<div id="ctxVol"></div></div>
         <details class="addnote" ${src.lMl || src.rMl ? 'open' : ''}><summary>＋ Split by left / right</summary>
-          <div class="field"><label class="l">Left</label>${stepper('lMl', v(src.lMl), { ml: step })}</div>
-          <div class="field"><label class="l">Right</label>${stepper('rMl', v(src.rMl), { ml: step })}</div></details>
+          <div class="field"><label class="l">Left</label>${stepper('lMl', v(src.lMl), { ml: 5 })}</div>
+          <div class="field"><label class="l">Right</label>${stepper('rMl', v(src.rMl), { ml: 5 })}</div></details>
         <div class="field"><label class="l">Where did it go?</label>${chips('store', STORE_CHOICES, src.store === 'fed' ? 'fridge' : (src.store ?? last?.store ?? 'fridge'))}<div id="ctxStore"></div></div>
         <div class="field"><label class="l">Fed to baby?</label>${chips('fed', [['0', 'Not yet'], ['1', 'Yes']], wasFed ? '1' : '0')}
           <div id="fedWhenWrap" ${wasFed ? '' : 'hidden'} style="margin-top:12px">${whenField(Date.now(), fedAtKnown, 'fedWhen', 'When was she fed?')}</div>
@@ -996,7 +1087,7 @@ const BUILDERS = {
 
 let sheetState = null;
 function openSheet(type, opts = {}) {
-  const f = $('#sheetForm'), now = Date.now(), ed = opts.edit || null, at = ed ? ed.t : now, d = dayOfLife(at);
+  const f = $('#sheetForm'), now = Date.now(), ed = opts.edit || null, at = ed ? ed.t : (opts.timer ? opts.timer.t : now), d = dayOfLife(at);
   const b = BUILDERS[type](ed, at, d, opts);
   f.innerHTML = `<h2>${ed ? '✎ Edit · ' : ''}${b.title}</h2>${b.body}<p class="ferr" id="ferr" hidden></p>${actionsHtml(!!ed)}`;
   sheetState = { type, ed, b };
@@ -1026,8 +1117,8 @@ function repeatFeed() {
   const rep = repeatEntry(byType('feed').pop());
   if (!rep) return openSheet('feed');
   const entry = { id: uid(), t: Date.now(), ...rep };
-  const echo = feedPumpEcho(entry);
-  logQuick(entry, `Logged: ${detail(entry)}${echo ? ' (also added to Pumping)' : ''}`, echo);
+  const sync = syncFeedPumpEcho(entry, null);
+  logQuick(entry, `Logged: ${detail(entry)}${sync ? ' (also added to Pumping)' : ''}`, sync && sync.op.entry);
 }
 const quickStatus = k => logQuick({ id: uid(), type: 'journal', t: Date.now(), status: k }, `${statusOf(k)[1]} Logged: ${statusOf(k)[2]}`);
 
@@ -1048,7 +1139,7 @@ function syncPumpFeedLink(entry, ed) {
   // (the fed-time field is minute-precision once round-tripped through a datetime picker, hence the tolerance).
   const untouchedLegacy = ed && ed.store === 'fed' && !prevFeedId && entry.fed && Math.abs(entry.fedAt - ed.t) < M;
   if (entry.fed && !untouchedLegacy) {
-    const feedEntry = { id: prevFeedId || uid(), type: 'feed', t: entry.fedAt, kind: 'bottle', amt: entry.amt, unit: entry.unit, note: 'Fed from a pumping session' };
+    const feedEntry = { id: prevFeedId || uid(), type: 'feed', t: entry.fedAt, kind: 'pumped', pMl: entry.amt, amt: entry.amt, unit: entry.unit, note: 'Fed from a pumping session' };
     entry.feedId = feedEntry.id;
     return { op: prevFeedId ? { op: 'update', entry: feedEntry } : { op: 'add', entry: feedEntry },
       undo: prevFeed ? () => op({ op: 'update', entry: prevFeed }) : () => op({ op: 'delete', id: feedEntry.id }) };
@@ -1059,11 +1150,21 @@ function syncPumpFeedLink(entry, ed) {
   }
   return null;
 }
+function linkedOf(entry) {   // the other tab's mirrored entry, in whichever direction this one links
+  const id = entry.type === 'pump' ? entry.feedId : entry.type === 'feed' ? entry.pumpEchoId : null;
+  return id ? state.logs.find(l => l.id === id) : null;
+}
+function syncTag(type, sync, isEdit) {
+  if (!sync) return '';
+  const target = type === 'pump' ? 'Track' : 'Pumping';
+  if (isEdit) return sync.op.op === 'delete' ? ` · removed from ${target}` : ` · also on ${target}`;
+  return sync.op.op === 'add' ? ` (also added to ${target})` : '';
+}
 $('#sheetForm').addEventListener('submit', e => {
   const f = e.target, btn = e.submitter, { type, ed, b } = sheetState || {};
   if (btn?.value === 'delete') {
     if (ed && confirm('Delete this entry?')) {
-      const linked = type === 'pump' && ed.feedId ? state.logs.find(l => l.id === ed.feedId) : null;
+      const linked = linkedOf(ed);
       op({ op: 'delete', id: ed.id });
       if (linked) op({ op: 'delete', id: linked.id });
       toast('Entry deleted', 7000, { label: 'Undo', fn: () => { op({ op: 'add', entry: ed }); if (linked) op({ op: 'add', entry: linked }); } });
@@ -1076,21 +1177,17 @@ $('#sheetForm').addEventListener('submit', e => {
   const err = b.collect(f, entry, btn);
   if (err) { e.preventDefault(); setErr(err); return; }
   const fl = flagFor(entry);
-  const sync = type === 'pump' ? syncPumpFeedLink(entry, ed) : null;
-  const echo = type === 'feed' && !ed ? feedPumpEcho(entry) : null;
+  const sync = type === 'pump' ? syncPumpFeedLink(entry, ed) : type === 'feed' ? syncFeedPumpEcho(entry, ed) : null;
   if (ed) {
     op({ op: 'update', entry });
     if (sync) op(sync.op);
-    const tag = sync && sync.op.op === 'add' ? ' · also added to Track' : sync && sync.op.op === 'delete' ? ' · removed from Track' : '';
-    toast(fl ? fl.msg : `Updated: ${detail(entry)}${tag}`, fl ? 8000 : 7000,
+    toast(fl ? fl.msg : `Updated: ${detail(entry)}${syncTag(type, sync, true)}`, fl ? 8000 : 7000,
       { label: 'Undo', fn: () => { op({ op: 'update', entry: ed }); if (sync) sync.undo(); } });
   } else {
     op({ op: 'add', entry });
     if (sync) op(sync.op);
-    if (echo) op({ op: 'add', entry: echo });
-    const tag = sync ? ' (also added as a feeding)' : echo ? ' (also added to Pumping)' : '';
-    toast(fl ? fl.msg : `Logged: ${detail(entry)}${tag}`, fl ? 8000 : 7000,
-      { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (sync) sync.undo(); if (echo) op({ op: 'delete', id: echo.id }); } });
+    toast(fl ? fl.msg : `Logged: ${detail(entry)}${syncTag(type, sync, false)}`, fl ? 8000 : 7000,
+      { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (sync) sync.undo(); } });
   }
 });
 
@@ -1260,6 +1357,8 @@ function toast(msg, ms = 2200, action) {
 }
 document.addEventListener('click', e => {
   const q = e.target.closest('[data-quick]'); if (q) return repeatFeed();
+  const tm = e.target.closest('[data-timer]');
+  if (tm) return ({ start: timerStart, switch: timerSwitch, cancel: timerCancel, stop: timerStopAndLog })[tm.dataset.timer]?.();
   const l = e.target.closest('[data-log]'); if (l) return openSheet(l.dataset.log, { kind: l.dataset.kind, weightOnly: !!l.dataset.weight });
   const ed = e.target.closest('[data-edit]'); if (ed) { const en = state.logs.find(x => x.id === ed.dataset.edit); if (en) openSheet(en.type, { edit: en }); return; }
   const stt = e.target.closest('[data-status]'); if (stt) return quickStatus(stt.dataset.status);
@@ -1305,10 +1404,19 @@ $('#mode').addEventListener('click', openSettings);
 /* ---------- boot ---------- */
 (async function boot() {
   state = lsGet(LS) || state; state.settings = state.settings || {};
-  pending = lsGet(LS_PEND) || []; cfg = lsGet(LS_CFG);
+  pending = lsGet(LS_PEND) || []; cfg = lsGet(LS_CFG); timer = lsGet(LS_TIMER) || null;
   // One-time setup link: https://…/#u=<web app url>&k=<secret>. The hash never leaves the browser.
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get('u') && h.get('k')) { history.replaceState(null, '', location.pathname + location.search); render(); await connect({ url: h.get('u'), key: h.get('k') }, {}); }
+  // Hands-free hooks for Siri / the Shortcuts app: opening the page with one of these in the hash
+  // performs the action immediately, no taps needed — see README for how to wire up a Shortcut.
+  const quick = h.get('quick');
+  if (quick) {
+    history.replaceState(null, '', location.pathname + location.search);
+    if (quick === 'timer-start' && !timer) timerStart();
+    else if (quick === 'timer-stop' && timer) timerStopQuiet();
+    else if (quick === 'feed-repeat') repeatFeed();
+  }
   render(); showView(['track', 'pump', 'journal'].includes(lsGet(LS_VIEW)) ? lsGet(LS_VIEW) : 'track', false);
   if (cfg) { await pull(); if (!connected) { serverRev = -1; try { const j = await api('state'); state = j.state; serverRev = j.state.rev; connected = true; } catch {} } render(); flush(); syncCalendar(true); }
   if (!state.settings.birthMs) openSettings();

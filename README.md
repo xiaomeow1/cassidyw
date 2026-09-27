@@ -56,22 +56,53 @@ Events carry a 5-minute alert, and they move each time you log a feed or change.
 (Share the calendar with your partner from Google Calendar → Settings → Share.)
 
 ## Tabs
-- **Track**: log a feed with just a source (breast or bottle) and an amount in mL or oz, tap "＋ Spit-up or note", and see a "Same as last" one-tap button once you've logged one.
+- **Track**: log a feed by picking any mix of breast, formula and pumped milk, each with its own amount (mL/oz, in 5 mL steps) — breast also gets minutes and a side. Tap "＋ Spit-up or note", and see a "Same as last" one-tap button once you've logged one.
+- **Nursing timer**: tap **▶ Start nursing timer** on the Feeding card when she latches, **⇄ Switch side** if she swaps, **■ Stop & log feeding** when done — it fills in the duration and the exact start time for you, so there's nothing to estimate or type.
 - **Pump / Feed**: next feed and next pump side by side with a merged "coming up" list, plus pumping sessions with duration, total (optionally left/right), where it went, 24-hour totals, a 7-day chart, and pumped-and-stored milk on hand.
 - **Journal**: one-tap "how is she doing", notes and tags, a dedicated **⚖️ Log weight** button, a weight-trend chart, and length, head size and temperature (US or metric).
 - Tap any entry (or its ✎) to edit its time, details and unit.
 - Volume units default to mL for the first 2 weeks, then oz. Change that in ⚙ Settings.
-- **Breastfeeding with an amount also logs a pumping-tab entry** (as milk delivered straight from the source), so total intake stays in one place.
-- A pumping session has its own independent **"Fed to baby?"** yes/no and time, separate from when it was pumped. Log the session, store it, and come back later — even editing it the next day — to mark it fed at the actual time; that creates (or updates) a matching feed entry on Track. Unmarking it removes that feed entry again.
 
 There's no diaper tracking. In the Sheet these are the `Log`, `Pumping` and `Journal`
 tabs. Amounts are always stored in mL (weights in g, lengths in cm, temperatures in
 °C); each row also records the unit it was entered in.
 
+### Feeding and pumping stay in sync
+The Pump / Feed tab exists to track milk production and frequency, not just sessions
+on an actual pump — so:
+- **Breastfeeding with a logged duration also creates a matching entry on Pump / Feed**
+  (marked "fed" at that same moment). Change the duration later and that entry updates;
+  clear it and the entry is removed. This is what the nursing timer feeds into.
+- **A pumping session has its own independent "Fed to baby?" yes/no and time**, separate
+  from when it was pumped. Log the session, store it, and come back later — even the
+  next day — to mark it fed at the real time; that creates (or updates) a matching feed
+  entry on Track. Unmarking it removes that feed entry again.
+- Either side can be deleted from its own tab, and its mirrored entry goes with it.
+
 ## Using it
 - **Log feeding**, back-date with the *When* field. Entries show instantly and sync in the background. If you're offline they queue and send later.
 - Anyone using the link sees the same data (the page checks for updates about every 45 s and when reopened).
 - In the Sheet, **Log** is the full feed/note history, **Pumping** and **Journal** are their own tabs, **Daily** has per-day totals (handy for pediatrician visits), and **Settings** holds name, birth time and feed spacing (you can edit them there too).
+
+## Hands-free: log with Siri
+The page understands a few `#quick=` links that act the instant they load — no taps.
+Opening one of these (in Safari, or via a Shortcut) does it immediately:
+
+- `…/#quick=timer-start` — starts the nursing timer
+- `…/#quick=timer-stop` — stops it and logs the feed right away (with an Undo toast)
+- `…/#quick=feed-repeat` — logs "Same as last", identical to tapping that button
+
+**To wire up "Hey Siri, start nursing":**
+1. Open the **Shortcuts** app on iPhone → **+** to create a new shortcut.
+2. Add the action **Open URLs**, and set the URL to your site plus the hash, e.g.
+   `https://<you>.github.io/<repo>/#quick=timer-start`.
+3. Tap the shortcut's settings (⋯) → **Add to Siri**, and record a phrase like "start nursing."
+4. Repeat for "stop nursing" (`#quick=timer-stop`) and "log a feed" (`#quick=feed-repeat`).
+
+This briefly opens Safari to run the action and shows a confirmation there — it isn't
+fully invisible, but it's two spoken words instead of unlocking the phone and filling in
+a form. It only works on a device that's already connected (step 3 above), since the
+timer and log both need to know whose data they're touching.
 
 ## Changing the backend
 After editing `Code.gs`: **Deploy → Manage deployments → ✎ → Version: New version → Deploy**. The URL stays the same.
