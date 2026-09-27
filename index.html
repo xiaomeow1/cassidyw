@@ -30,6 +30,7 @@
   --warn-bg: #fff2d9;
   --crit: #b3261e;
   --crit-bg: #fde8e6;
+  --meter-band: rgba(59, 43, 48, 0.09);
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
@@ -39,6 +40,7 @@
     --feed: #d45f8a; --diaper: #3987e5; --note: #c98500; --pump: #3fb3a4; --journal: #9a86e6;
     --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --btn-pump: #3fb3a4; --btn-journal: #9a86e6; --on-btn: #1c1416; --accent: #d45f8a;
     --good: #6fcf8f; --warn: #f0b429; --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a1d;
+    --meter-band: rgba(255, 255, 255, 0.12);
   }
 }
 :root[data-theme="dark"] {
@@ -48,6 +50,7 @@
   --feed: #d45f8a; --diaper: #3987e5; --note: #c98500; --pump: #3fb3a4; --journal: #9a86e6;
   --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --btn-pump: #3fb3a4; --btn-journal: #9a86e6; --on-btn: #1c1416; --accent: #d45f8a;
   --good: #6fcf8f; --warn: #f0b429; --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a1d;
+  --meter-band: rgba(255, 255, 255, 0.12);
 }
 
 * { box-sizing: border-box; }
@@ -123,6 +126,11 @@ details.more .tips { padding-top: 6px; }
 
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .tile { padding: 12px; }
+.meter { position: relative; height: 14px; border-radius: 7px; background: var(--chip); overflow: hidden; margin-top: 10px; }
+.meter .band { position: absolute; top: 0; bottom: 0; background: var(--meter-band); }
+.meter .fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 7px; }
+.meter .fill.ok { background: var(--good); }
+.meter .fill.low { background: var(--warn); }
 .tile .k { font-size: 12px; color: var(--ink-2); }
 .tile .v { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .tile .g { font-size: 12px; color: var(--ink-2); }
@@ -252,6 +260,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   <section>
     <div class="sec-title">Last 24 hours</div>
     <div class="tiles" id="tiles"></div>
+    <div class="card" id="intakeMeter" style="margin-top:10px"></div>
   </section>
 
   <section>
@@ -559,7 +568,8 @@ function detail(e) {
   if (e.type === 'note') return kindName(NOTE_KINDS, e.kind) + (e.amt ? ` · ${fmtVol(e.amt, e.unit)}` : '');
   if (e.type === 'pump') {
     const st = STORE.find(x => x[0] === e.store);
-    return [e.dur ? `${e.dur} min` : null, e.amt ? `${fmtVol(e.amt, e.unit)} total` : null, e.lMl || e.rMl ? `L ${fmtVol(e.lMl || 0, e.unit)} · R ${fmtVol(e.rMl || 0, e.unit)}` : null, st ? st[1] : null].filter(Boolean).join(' · ') || 'Pumping session';
+    const fedTxt = e.fedAt ? `Fed ${fmtT(e.fedAt)}` : e.store === 'fed' ? 'Fed' : null;
+    return [e.dur ? `${e.dur} min` : null, e.amt ? `${fmtVol(e.amt, e.unit)} total` : null, e.lMl || e.rMl ? `L ${fmtVol(e.lMl || 0, e.unit)} · R ${fmtVol(e.rMl || 0, e.unit)}` : null, st && st[0] !== 'fed' ? st[1] : null, fedTxt].filter(Boolean).join(' · ') || 'Pumping session';
   }
   if (e.type === 'journal') {
     const st = statusOf(e.status), tags = String(e.tags || '').split(',').filter(Boolean).map(t => (TAGS.find(x => x[0] === t) || [, t])[1]);
@@ -657,16 +667,34 @@ function renderHero() {
   heroCard('#feedCard', 'feed-c', 'Feeding', byType('feed'), feedInterval(), feedActions, feedTip, ['Feeding tips', TIPS.feeding]);
 }
 
+// A rough expected total-intake-per-day range (mL), derived from the same per-feed figures at 8–12 feeds/day.
+// Only feeds logged with an amount count toward "today's intake" — pure breastfeeding without a measured
+// amount isn't included, so the comparison can understate real intake for an exclusively breastfed baby.
+const dailyRange = d => { const r = bottleRange(d); return [r[0] * 8, r[1] * 12]; };
+function renderIntakeMeter(d, totalMl, u, unmeasured) {
+  const el = $('#intakeMeter');
+  el.hidden = !totalMl;
+  if (!totalMl) { el.innerHTML = ''; return; }
+  const [lo, hi] = dailyRange(d), scale = Math.max(hi, totalMl) * 1.15;
+  const bandLeft = lo / scale * 100, bandW = (hi - lo) / scale * 100, fillW = Math.min(100, totalMl / scale * 100);
+  const ok = totalMl >= lo;
+  el.innerHTML = `<div class="k">Today's intake vs. typical for day ${d}</div>
+    <div class="meter" role="img" aria-label="${fmtVol(totalMl, u)} logged against a typical range of ${volRange(lo, hi, u)}"><div class="band" style="left:${bandLeft}%;width:${bandW}%"></div><div class="fill ${ok ? 'ok' : 'low'}" style="width:${fillW}%"></div></div>
+    <div class="fine" style="margin-top:6px">${fmtVol(totalMl, u)} logged · typical for day ${d} is ${volRange(lo, hi, u)}${unmeasured ? ` · ${unmeasured} feed${unmeasured === 1 ? '' : 's'} with no amount, not included` : ''}.</div>`;
+}
 function renderTiles(now) {
+  const d = dayOfLife(now);
   const recent = state.logs.filter(l => now - l.t < 24 * H);
   const { feeds } = counts24(now);
   const tile = (k, v, goal, ok) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">goal ${goal}</div><div class="st ${ok ? 'ok' : 'low'}">${ok ? '✓ On track' : 'Below goal so far'}</div></div>`;
   const spits = recent.filter(l => l.type === 'note' && l.kind !== 'other'), ml = spits.reduce((a, l) => a + (l.amt || 0), 0);
-  const bu = defaultUnit('feed'), amounts = recent.filter(l => l.type === 'feed').map(feedView).filter(v => v.amt);
+  const bu = defaultUnit('feed'), feedsToday = recent.filter(l => l.type === 'feed').map(feedView);
+  const amounts = feedsToday.filter(v => v.amt), unmeasured = feedsToday.length - amounts.length;
   const totalMl = amounts.reduce((a, v) => a + v.amt, 0);
-  const amtLine = totalMl ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Amount logged: ${fmtVol(totalMl, bu)} across ${amounts.length} feed${amounts.length === 1 ? '' : 's'}.</div>` : '';
+  const amtLine = totalMl ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Amount logged: ${fmtVol(totalMl, bu)} across ${amounts.length} feed${amounts.length === 1 ? '' : 's'}${unmeasured ? ` (${unmeasured} more without an amount)` : ''}.</div>` : '';
   const extra = amtLine + (spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${fmtVol(ml, defaultUnit('note'))} lost` : ''}</div>` : '');
   $('#tiles').innerHTML = extra + tile('Feedings', feeds, '8–12', feeds >= 8);
+  renderIntakeMeter(d, totalMl, bu, unmeasured);
 }
 
 let tlItems = [];
@@ -766,19 +794,22 @@ function downloadIcs() {
 const chips = (name, opts, sel, type = 'radio') => `<div class="chips">${opts.map(o => `<label><input type="${type}" name="${name}" value="${o[0]}" ${(Array.isArray(sel) ? sel.includes(o[0]) : o[0] === sel) ? 'checked' : ''}><span>${o[2] ? `<i class="swatch" style="background:${o[2]}"></i>` : ''}${o[1]}</span></label>`).join('')}</div>`;
 const localInput = t => { const d = new Date(t - new Date(t).getTimezoneOffset() * M); return d.toISOString().slice(0, 16); };
 const AGO = [['0', 'Just now'], ['5', '5 min'], ['10', '10 min'], ['15', '15 min'], ['30', '30 min'], ['60', '1 h'], ['custom', 'Other…']];
-const whenField = (now, editT) => editT
-  ? `<div class="field"><label class="l" for="when">When</label><input type="datetime-local" name="when" id="when" value="${localInput(editT)}" max="${localInput(Date.now() + H)}" style="width:100%"></div>`
-  : `<div class="field"><label class="l">When (how long ago?)</label>${chips('ago', AGO, '0')}<input type="datetime-local" name="when" value="${localInput(now)}" max="${localInput(now + H)}" hidden style="width:100%;margin-top:8px"></div>`;
+// name/label let a form carry a second, independent time field (the pump sheet's "fed at" time
+// alongside its own "when pumped" time) without colliding with the first.
+const whenField = (now, editT, name = 'when', label = 'When') => editT
+  ? `<div class="field"><label class="l" for="${name}">${label}</label><input type="datetime-local" name="${name}" id="${name}" value="${localInput(editT)}" max="${localInput(Date.now() + H)}" style="width:100%"></div>`
+  : `<div class="field"><label class="l">${label} (how long ago?)</label>${chips(name + 'Ago', AGO, '0')}<input type="datetime-local" name="${name}" value="${localInput(now)}" max="${localInput(now + H)}" hidden style="width:100%;margin-top:8px"></div>`;
 const noteField = (ph, v = '') => `<details class="addnote" ${v ? 'open' : ''}><summary>＋ Add a note</summary><input type="text" name="note" value="${esc(v)}" placeholder="${ph}" style="width:100%"></details>`;
 // o = { ml: 10 } steps a volume (10 mL, or 0.5 oz in oz); o = { fix: 5 } is a plain step.
 const stepper = (name, val, o) => { const at = o.ml ? `data-stepml="${o.ml}"` : `data-stepfix="${o.fix}"`; return `<div class="step"><button type="button" class="btn" data-for="${name}" data-dir="-1" ${at} aria-label="Less">−</button><input type="number" name="${name}" id="${name}" min="0" step="any" inputmode="decimal" value="${val ?? ''}"><button type="button" class="btn" data-for="${name}" data-dir="1" ${at} aria-label="More">+</button></div>`; };
 const unitField = u => `<div class="field" id="secUnit"><label class="l">Unit</label>${chips('unit', [['ml', 'mL'], ['oz', 'oz']], u)}</div>`;
 const ctxHtml = list => list.map(x => `<div class="ctx ${x.level}">${x.text}</div>`).join('');
 const actionsHtml = isEdit => `<div class="actions">${isEdit ? '<button class="btn danger" value="delete" formnovalidate>Delete</button>' : ''}<button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
-function readWhen(f) {
-  if (!f.elements.ago) { const t = new Date(f.elements.when.value).getTime(); return isNaN(t) ? Date.now() : t; }
-  if (f.elements.ago.value === 'custom') { const t = new Date(f.elements.when.value).getTime(); return isNaN(t) ? Date.now() : t; }
-  return Date.now() - (+f.elements.ago.value) * M;
+function readWhen(f, name = 'when') {
+  const ago = f.elements[name + 'Ago'];
+  if (!ago) { const t = new Date(f.elements[name].value).getTime(); return isNaN(t) ? Date.now() : t; }
+  if (ago.value === 'custom') { const t = new Date(f.elements[name].value).getTime(); return isNaN(t) ? Date.now() : t; }
+  return Date.now() - (+ago.value) * M;
 }
 // Typical bottle volume per feed (mL) by day of life.
 const bottleRange = d => d <= 2 ? [15, 30] : d <= 7 ? [30, 60] : d <= 28 ? [60, 90] : [90, 120];
@@ -856,6 +887,12 @@ const BUILDERS = {
       : d <= 14 ? `Roughly ${volRange(30, 120, u)} across both sides per session is common by the end of week 2, but the normal range is wide.`
       : 'Totals vary a lot between people and through the day. Your own trend matters more than any target.';
     const since = last ? Date.now() - last.t : 0;
+    // "Fed to baby?" is independent of storage and of when it was pumped: pump now, store it, and
+    // come back later (editing this session) to say when it was actually given. STORE_CHOICES drops
+    // the old 'fed' storage option, which this replaces; STORE itself still has it, for reading old data.
+    const STORE_CHOICES = STORE.filter(s => s[0] !== 'fed');
+    const wasFed = !!(src.fedAt || src.feedId || src.store === 'fed');
+    const fedAtKnown = src.fedAt || (src.store === 'fed' ? src.t : null);
     return {
       title: '🥛 Pumping session', vol: ['tot', 'lMl', 'rMl'], canon: { tot: src.amt, lMl: src.lMl, rMl: src.rMl },
       body: `<div class="field"><label class="l">Duration, minutes</label>${stepper('dur', src.dur ?? last?.dur ?? 15, { fix: 5 })}<div id="ctxDur"></div></div>
@@ -864,8 +901,10 @@ const BUILDERS = {
         <details class="addnote" ${src.lMl || src.rMl ? 'open' : ''}><summary>＋ Split by left / right</summary>
           <div class="field"><label class="l">Left</label>${stepper('lMl', v(src.lMl), { ml: step })}</div>
           <div class="field"><label class="l">Right</label>${stepper('rMl', v(src.rMl), { ml: step })}</div></details>
-        <div class="field"><label class="l">Where did it go?</label>${chips('store', STORE, src.store ?? last?.store ?? 'fridge')}<div id="ctxStore"></div>
-          ${ed ? '' : `<label class="ctx" id="alsoFeed" hidden style="display:none;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" name="alsoFeed" checked style="width:20px;height:20px"><span>Also log it as a feeding (pumped milk) on the Track tab</span></label>`}</div>
+        <div class="field"><label class="l">Where did it go?</label>${chips('store', STORE_CHOICES, src.store === 'fed' ? 'fridge' : (src.store ?? last?.store ?? 'fridge'))}<div id="ctxStore"></div></div>
+        <div class="field"><label class="l">Fed to baby?</label>${chips('fed', [['0', 'Not yet'], ['1', 'Yes']], wasFed ? '1' : '0')}
+          <div id="fedWhenWrap" ${wasFed ? '' : 'hidden'} style="margin-top:12px">${whenField(Date.now(), fedAtKnown, 'fedWhen', 'When was she fed?')}</div>
+        </div>
         ${whenField(at, ed && at)}${noteField('let-down, comfort, flange size…', ed?.note)}`,
       update(f, ev) {
         const u = f.elements.unit.value, tgt = ev?.target?.name;
@@ -875,8 +914,8 @@ const BUILDERS = {
         $('#ctxDur').innerHTML = ctxHtml([...ctx, { level: 'ok', text: 'About 15–20 minutes, or until milk has stopped flowing for about 2 minutes. Early on, 8 sessions in 24 hours (including one overnight) helps build supply.' }]);
         $('#ctxVol').innerHTML = ctxHtml([{ level: 'ok', text: expect(u) }]);
         const stv = f.elements.store.value;
-        $('#ctxStore').innerHTML = ctxHtml([{ level: 'ok', text: stv === 'discarded' ? "Discarded milk isn't counted in your estimated stash." : stv === 'fed' ? 'Given straight from the pump. It counts as pumped, and as fed once it is logged as a feeding.' : 'Fridge up to 4 days · freezer about 6 months. Label with the date and use the oldest first.' }]);
-        const af = $('#alsoFeed'); if (af) af.style.display = stv === 'fed' ? 'flex' : 'none';
+        $('#ctxStore').innerHTML = ctxHtml([{ level: 'ok', text: stv === 'discarded' ? "Discarded milk isn't counted in your estimated stash." : 'Fridge up to 4 days · freezer about 6 months. Label with the date and use the oldest first.' }]);
+        $('#fedWhenWrap').hidden = f.elements.fed.value !== '1';
       },
       collect(f, entry) {
         const el = f.elements, u = el.unit.value, n = k => parseFloat(el[k].value) || 0;
@@ -885,6 +924,8 @@ const BUILDERS = {
         if (!total && !entry.dur) return 'Add the amount or the duration.';
         entry.lMl = l || undefined; entry.rMl = r || undefined; entry.amt = total || undefined;
         entry.unit = u; entry.store = el.store.value || undefined;
+        entry.fed = el.fed.value === '1';
+        if (entry.fed) entry.fedAt = readWhen(f, 'fedWhen');
       },
     };
   },
@@ -963,7 +1004,7 @@ function openSheet(type, opts = {}) {
   Object.entries(b.canon || {}).forEach(([n, ml]) => { if (ml && f.elements[n]) f.elements[n].dataset.ml = ml; });
   let curUnit = f.elements.unit ? f.elements.unit.value : null;
   f.onchange = f.oninput = ev => {
-    if (f.elements.ago) f.elements.when.hidden = f.elements.ago.value !== 'custom';
+    ['when', 'fedWhen'].forEach(n => { const ago = f.elements[n + 'Ago']; if (ago) f.elements[n].hidden = ago.value !== 'custom'; });
     if (curUnit && f.elements.unit.value !== curUnit) {       // switching unit converts what is already typed
       const nu = f.elements.unit.value;
       (b.vol || []).forEach(n => { const el = f.elements[n]; if (el && el.value !== '') { const ml = readMl(el, curUnit); el.value = fromMl(ml, nu); el.dataset.ml = ml; } });
@@ -997,11 +1038,36 @@ $('#sheetForm').addEventListener('click', e => {
   inp.value = round2(Math.max(0, (parseFloat(inp.value) || 0) + step * b.dataset.dir));
   inp.dispatchEvent(new Event('input', { bubbles: true }));
 });
+// Keeps a pump session's mirrored Track-tab feed entry in sync with its "fed to baby?" state:
+// creates one the first time it's marked fed, updates it if the amount/time changes on a later
+// edit, and removes it if "fed" is unchecked again. Mutates `entry.feedId` to match.
+function syncPumpFeedLink(entry, ed) {
+  const prevFeedId = ed?.feedId, prevFeed = prevFeedId ? state.logs.find(l => l.id === prevFeedId) : null;
+  // A pre-redesign session that was marked "fed" via the old store option has no feedId to link to.
+  // Leave a no-op edit of one of those alone rather than guess and risk creating a duplicate feed
+  // (the fed-time field is minute-precision once round-tripped through a datetime picker, hence the tolerance).
+  const untouchedLegacy = ed && ed.store === 'fed' && !prevFeedId && entry.fed && Math.abs(entry.fedAt - ed.t) < M;
+  if (entry.fed && !untouchedLegacy) {
+    const feedEntry = { id: prevFeedId || uid(), type: 'feed', t: entry.fedAt, kind: 'bottle', amt: entry.amt, unit: entry.unit, note: 'Fed from a pumping session' };
+    entry.feedId = feedEntry.id;
+    return { op: prevFeedId ? { op: 'update', entry: feedEntry } : { op: 'add', entry: feedEntry },
+      undo: prevFeed ? () => op({ op: 'update', entry: prevFeed }) : () => op({ op: 'delete', id: feedEntry.id }) };
+  }
+  if (!entry.fed && prevFeedId) {
+    entry.feedId = undefined;
+    return { op: { op: 'delete', id: prevFeedId }, undo: () => { if (prevFeed) op({ op: 'add', entry: prevFeed }); } };
+  }
+  return null;
+}
 $('#sheetForm').addEventListener('submit', e => {
   const f = e.target, btn = e.submitter, { type, ed, b } = sheetState || {};
   if (btn?.value === 'delete') {
-    if (ed && confirm('Delete this entry?')) { op({ op: 'delete', id: ed.id }); toast('Entry deleted', 7000, { label: 'Undo', fn: () => op({ op: 'add', entry: ed }) }); }
-    else e.preventDefault();
+    if (ed && confirm('Delete this entry?')) {
+      const linked = type === 'pump' && ed.feedId ? state.logs.find(l => l.id === ed.feedId) : null;
+      op({ op: 'delete', id: ed.id });
+      if (linked) op({ op: 'delete', id: linked.id });
+      toast('Entry deleted', 7000, { label: 'Undo', fn: () => { op({ op: 'add', entry: ed }); if (linked) op({ op: 'add', entry: linked }); } });
+    } else e.preventDefault();
     return;
   }
   if (!btn || btn.value !== 'save') return;
@@ -1010,18 +1076,21 @@ $('#sheetForm').addEventListener('submit', e => {
   const err = b.collect(f, entry, btn);
   if (err) { e.preventDefault(); setErr(err); return; }
   const fl = flagFor(entry);
+  const sync = type === 'pump' ? syncPumpFeedLink(entry, ed) : null;
+  const echo = type === 'feed' && !ed ? feedPumpEcho(entry) : null;
   if (ed) {
     op({ op: 'update', entry });
-    toast(fl ? fl.msg : `Updated: ${detail(entry)}`, fl ? 8000 : 7000, { label: 'Undo', fn: () => op({ op: 'update', entry: ed }) });
+    if (sync) op(sync.op);
+    const tag = sync && sync.op.op === 'add' ? ' · also added to Track' : sync && sync.op.op === 'delete' ? ' · removed from Track' : '';
+    toast(fl ? fl.msg : `Updated: ${detail(entry)}${tag}`, fl ? 8000 : 7000,
+      { label: 'Undo', fn: () => { op({ op: 'update', entry: ed }); if (sync) sync.undo(); } });
   } else {
     op({ op: 'add', entry });
-    let extra = null;
-    if (type === 'pump' && entry.store === 'fed' && entry.amt && f.elements.alsoFeed?.checked) extra = { id: uid(), type: 'feed', t: entry.t, kind: 'bottle', amt: entry.amt, unit: entry.unit, note: 'Fed straight from pumping' };
-    else if (type === 'feed') extra = feedPumpEcho(entry);
-    if (extra) op({ op: 'add', entry: extra });
-    const tag = type === 'pump' && extra ? ' (also added as a feeding)' : type === 'feed' && extra ? ' (also added to Pumping)' : '';
+    if (sync) op(sync.op);
+    if (echo) op({ op: 'add', entry: echo });
+    const tag = sync ? ' (also added as a feeding)' : echo ? ' (also added to Pumping)' : '';
     toast(fl ? fl.msg : `Logged: ${detail(entry)}${tag}`, fl ? 8000 : 7000,
-      { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (extra) op({ op: 'delete', id: extra.id }); } });
+      { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (sync) sync.undo(); if (echo) op({ op: 'delete', id: echo.id }); } });
   }
 });
 
@@ -1051,8 +1120,8 @@ function renderPump(now) {
   $('#pfNext').innerHTML = `<div class="head"><i class="dot pump-c"></i>Next feed &amp; next pump</div>${nx('feed-c', '🍼 Feeding', byType('feed'), feedInterval())}${nx('pump-c', '🥛 Pumping', all, iv)}
     <div class="twoBtn"><button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button><button class="logbtn pump-c" data-log="pump">🥛 Log pumping</button></div>
     ${up.length ? `<div class="up"><b>Coming up:</b> ${up.map(x => `<span class="pill2">${fmtT(x.start)} ${x.kind === 'feed' ? '🍼' : '🥛'}</span>`).join('')}</div>` : ''}`;
-  const kept = all.filter(l => l.store === 'fridge' || l.store === 'freezer').reduce((a, l) => a + (l.amt || 0), 0);
-  $('#pumpStash').innerHTML = lines.map(x => `<span>${x}</span>`).join('') + (all.length ? `<span>Pumped &amp; stored (fridge / freezer): ${fmtVol(kept, u)}. This doesn't subtract bottles fed from the stash — edit or delete a session if it's no longer accurate.</span>` : '');
+  const kept = all.filter(l => (l.store === 'fridge' || l.store === 'freezer') && !l.fedAt).reduce((a, l) => a + (l.amt || 0), 0);
+  $('#pumpStash').innerHTML = lines.map(x => `<span>${x}</span>`).join('') + (all.length ? `<span>Pumped &amp; stored, not yet fed: ${fmtVol(kept, u)}. A session drops out once you mark it fed to baby.</span>` : '');
   // last 7 days
   const days = Array.from({ length: 7 }, (_, i) => { const dt = new Date(now); dt.setHours(0, 0, 0, 0); dt.setDate(dt.getDate() - (6 - i)); return dt; });
   const rows = days.map(dt => { const t0 = dt.getTime(), t1 = t0 + 24 * H, ss = all.filter(l => l.t >= t0 && l.t < t1); return { dt, n: ss.length, ml: ss.reduce((a, l) => a + (l.amt || 0), 0) }; });
