@@ -206,7 +206,7 @@ dialog h2 { font-size: 20px; }
 .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 10; max-width: calc(100vw - 32px); }
 
 /* ---- tabs, edit, pumping, journal ---- */
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px rgba(150, 70, 100, .08); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(2, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px rgba(150, 70, 100, .08); }
 .tabbar button { border: 0; background: transparent; padding: 6px 4px; border-radius: 12px; font-size: 12px; color: var(--ink-2); display: grid; gap: 2px; justify-items: center; }
 .tabbar button span { font-size: 20px; line-height: 1.1; }
 .tabbar button[aria-selected="true"] { color: var(--accent); font-weight: 700; background: var(--chip); }
@@ -256,6 +256,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   <div id="alerts"></div>
 
   <div class="view" id="v-track">
+  <div class="card tracker" id="pfNext" style="margin-bottom:12px"></div>
   <div class="card tracker" id="feedCard"></div>
   <button class="btn wide" data-log="note" type="button"><i class="dot note-c"></i>Spit-up or note</button>
   <div class="callout tips" id="now" style="margin-top:12px"></div>
@@ -313,7 +314,6 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   </div>
 
   <div class="view" id="v-pump" hidden>
-    <div class="card tracker" id="pfNext" style="margin-bottom:12px"></div>
     <div class="card tracker" id="pumpCard"></div>
     <section><div class="sec-title">Last 24 hours</div><div class="tiles" id="pumpTiles"></div><div class="fine" id="pumpStash" style="margin:8px 2px 0;display:grid;gap:4px"></div></section>
     <section><div class="sec-title">Milk supply vs. what she needs</div><div class="card">
@@ -332,8 +332,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
 </main>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections">
-  <button data-view="track" aria-selected="true"><span>🍼</span>Track</button>
-  <button data-view="pump" aria-selected="false"><span>🥛</span>Pump / Feed</button>
+  <button data-view="track" aria-selected="true"><span>🍼</span>Feed &amp; Pump</button>
   <button data-view="journal" aria-selected="false"><span>📖</span>Journal</button>
 </nav>
 
@@ -522,12 +521,17 @@ function projection(list, iv, n) {
   const times = Array.from({ length: n }, (_, i) => first + i * iv).map(r5);
   return { last, iv, raw, times, overdue: raw <= now };
 }
+// No calendar alert for a predicted feed between midnight and 6 AM, for now — the event still
+// shows up in the calendar and in the app, it just won't page you overnight. Pump reminders are
+// unaffected. Adjust QUIET_END if the cutoff should be later.
+const QUIET_END_HOUR = 6;
+const isQuietHour = t => new Date(t).getHours() < QUIET_END_HOUR;
 function buildSlots() {
   const out = [];
   const f = projection(byType('feed'), feedInterval(), FEED_SLOTS);
   const pu = projection(byType('pump'), pumpInterval(), PUMP_SLOTS);
   const note = iv => `Estimated from ${NAME}'s recent pattern (about every ${dur(iv)}). Auto-updated by the tracker.`;
-  if (f) f.times.forEach((t, i) => out.push({ uid: `feed-${i + 1}`, kind: 'feed', title: `🍼 ${NAME} · feeding`, notes: note(f.iv), start: t, end: t + 20 * M }));
+  if (f) f.times.forEach((t, i) => out.push({ uid: `feed-${i + 1}`, kind: 'feed', title: `🍼 ${NAME} · feeding`, notes: note(f.iv), start: t, end: t + 20 * M, quiet: isQuietHour(t) }));
   if (pu) pu.times.forEach((t, i) => out.push({ uid: `pump-${i + 1}`, kind: 'pump', title: `🥛 ${NAME} · pumping`, notes: note(pu.iv), start: t, end: t + 30 * M }));
   return out;
 }
@@ -867,7 +871,8 @@ function downloadIcs() {
   const stamp = dt(Date.now()), seq = Math.floor(Date.now() / 1000);
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Newborn Tracker//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${NAME}`];
   buildSlots().forEach(s => lines.push('BEGIN:VEVENT', `UID:${s.uid}@tracker.local`, `DTSTAMP:${stamp}`, `SEQUENCE:${seq}`, `DTSTART:${dt(s.start)}`, `DTEND:${dt(s.end)}`,
-    `SUMMARY:${s.title}`, `DESCRIPTION:${s.notes}`, 'BEGIN:VALARM', 'TRIGGER:-PT5M', 'ACTION:DISPLAY', `DESCRIPTION:${s.title}`, 'END:VALARM', 'END:VEVENT'));
+    `SUMMARY:${s.title}`, `DESCRIPTION:${s.notes}`,
+    ...(s.quiet ? [] : ['BEGIN:VALARM', 'TRIGGER:-PT10M', 'ACTION:DISPLAY', `DESCRIPTION:${s.title}`, 'END:VALARM']), 'END:VEVENT'));
   lines.push('END:VCALENDAR');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/calendar' }));
@@ -1404,8 +1409,10 @@ $('#icsBtn').addEventListener('click', downloadIcs);
 window.addEventListener('resize', () => renderTimeline(Date.now()));
 
 /* ---------- tabs ---------- */
+// "track" shows Feeding and Pumping together, one continuous page instead of a tab switch between them.
 function showView(v, scroll = true) {
-  document.querySelectorAll('.view').forEach(el => { el.hidden = el.id !== 'v-' + v; });
+  const shown = v === 'track' ? ['v-track', 'v-pump'] : ['v-' + v];
+  document.querySelectorAll('.view').forEach(el => { el.hidden = !shown.includes(el.id); });
   document.querySelectorAll('#tabbar button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === v)));
   lsSet(LS_VIEW, v);
   if (v === 'track') renderTimeline(Date.now());
@@ -1451,7 +1458,7 @@ $('#mode').addEventListener('click', openSettings);
     else if (quick === 'timer-stop' && timer) timerStopQuiet();
     else if (quick === 'feed-repeat') repeatFeed();
   }
-  render(); showView(['track', 'pump', 'journal'].includes(lsGet(LS_VIEW)) ? lsGet(LS_VIEW) : 'track', false);
+  render(); showView(lsGet(LS_VIEW) === 'journal' ? 'journal' : 'track', false); // "pump" was its own tab before Feed & Pump merged
   if (cfg) { await pull(); if (!connected) { serverRev = -1; try { const j = await api('state'); state = j.state; serverRev = j.state.rev; connected = true; } catch {} } render(); flush(); syncCalendar(true); }
   if (!state.settings.birthMs) openSettings();
   setInterval(() => { render(); syncCalendar(); }, 60 * 1000);
