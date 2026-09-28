@@ -58,7 +58,7 @@ Events carry a 5-minute alert, and they move each time you log a feed or change.
 ## Tabs
 - **Track**: log a feed by picking any mix of breast, formula and pumped milk, each with its own amount (mL/oz, in 5 mL steps) — breast also gets minutes and a side. Tap "＋ Spit-up or note", and see a "Same as last" one-tap button once you've logged one.
 - **Nursing timer**: tap **▶ Start nursing timer** on the Feeding card when she latches, **⇄ Switch side** if she swaps, **■ Stop & log feeding** when done — it fills in the duration and the exact start time for you, so there's nothing to estimate or type.
-- **Pump / Feed**: next feed and next pump side by side with a merged "coming up" list, pumping sessions with duration and total (optionally left/right), 24-hour totals, and a 7-day **milk supply vs. what she needs** chart — daily production (pumped mL, plus nursing sessions assumed at 15 mL each, since actual transfer isn't measurable) against her typical daily need, with the formula gap spelled out for today.
+- **Pump / Feed**: next feed and next pump side by side with a merged "coming up" list, pumping sessions with duration and total (optionally left/right), 24-hour totals, and a 7-day **milk supply vs. what she needs** chart — daily production (pumped mL, plus nursing minutes at 2 mL/min, since actual transfer isn't measurable) against her typical daily need, with the formula gap spelled out for today.
 - **Journal**: one-tap "how is she doing", notes and tags, a dedicated **⚖️ Log weight** button, a weight-trend chart, and length, head size and temperature (US or metric).
 - Tap any entry (or its ✎) to edit its time, details and unit.
 - Volume units default to mL for the first 2 weeks, then oz. Change that in ⚙ Settings.

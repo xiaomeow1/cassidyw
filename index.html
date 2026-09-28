@@ -743,9 +743,9 @@ function renderHero() {
 // Only feeds logged with an amount count toward "today's intake" — pure breastfeeding without a measured
 // amount isn't included, so the comparison can understate real intake for an exclusively breastfed baby.
 const dailyRange = d => { const r = bottleRange(d); return [r[0] * 8, r[1] * 12]; };
-// Actual milk transferred while nursing isn't measurable at home, so production estimates count
-// every nursing session at a flat assumed volume rather than trying to guess per session.
-const BREASTFEED_ML = 15;
+// Actual milk transferred while nursing isn't measurable at home, so production estimates it from
+// logged duration at a flat rate. A session with no duration logged can't be estimated this way.
+const BREASTFEED_ML_PER_MIN = 2;
 function renderIntakeMeter(d, totalMl, u, unmeasured) {
   const el = $('#intakeMeter');
   el.hidden = !totalMl;
@@ -1220,17 +1220,20 @@ function renderPump(now) {
     <div class="twoBtn"><button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button><button class="logbtn pump-c" data-log="pump">🥛 Log pumping</button></div>
     ${up.length ? `<div class="up"><b>Coming up:</b> ${up.map(x => `<span class="pill2">${fmtT(x.start)} ${x.kind === 'feed' ? '🍼' : '🥛'}</span>`).join('')}</div>` : ''}`;
   $('#pumpStash').innerHTML = lines.map(x => `<span>${x}</span>`).join('');
-  // Milk supply vs. what she needs, last 7 days: production = pumped mL + (nursing sessions × BREASTFEED_ML),
-  // need = the typical daily range for that day of life (also used for the Track-tab intake meter),
-  // and the gap between them is roughly how much formula would cover the rest.
+  // Milk supply vs. what she needs, last 7 days: production = pumped mL + (logged nursing minutes ×
+  // BREASTFEED_ML_PER_MIN), need = the typical daily range for that day of life (also used for the
+  // Track-tab intake meter), and the gap between them is roughly how much formula would cover the rest.
   const days = Array.from({ length: 7 }, (_, i) => { const dt = new Date(now); dt.setHours(0, 0, 0, 0); dt.setDate(dt.getDate() - (6 - i)); return dt; });
   const rows = days.map(dt => {
     const t0 = dt.getTime(), t1 = t0 + 24 * H;
     const pumpedMl = all.filter(l => l.t >= t0 && l.t < t1).reduce((a, l) => a + (l.amt || 0), 0);
-    const nursing = state.logs.filter(l => l.type === 'feed' && l.t >= t0 && l.t < t1).map(feedView).filter(v => v.src === 'breast' || v.src === 'mixed').length;
-    const produced = pumpedMl + nursing * BREASTFEED_ML;
+    const nurse = state.logs.filter(l => l.type === 'feed' && l.t >= t0 && l.t < t1).reduce((a, l) => {
+      const v = feedView(l); if (v.src !== 'breast' && v.src !== 'mixed') return a;
+      const min = normFeed(l).min; a.n++; if (min) a.min += min; else a.uncounted++; return a;
+    }, { n: 0, min: 0, uncounted: 0 });
+    const nursingMl = Math.round(nurse.min * BREASTFEED_ML_PER_MIN), produced = pumpedMl + nursingMl;
     const [lo, hi] = dailyRange(dayOfLife(t0 + 12 * H));
-    return { dt, nursing, pumpedMl, produced, lo, hi, gap: Math.max(0, Math.round((lo + hi) / 2) - produced) };
+    return { dt, nurse, pumpedMl, nursingMl, produced, lo, hi, gap: Math.max(0, Math.round((lo + hi) / 2) - produced) };
   });
   const scaleMax = Math.max(1, ...rows.map(r => Math.max(r.produced, r.hi)));
   $('#pumpBars').innerHTML = rows.map(r => {
@@ -1241,8 +1244,8 @@ function renderPump(now) {
       <span class="val">${r.produced ? fmtVol(r.produced, u) : '–'}${r.gap ? ` · +${fmtVol(r.gap, u)} formula` : ''}</span></div>`;
   }).join('');
   const td = rows[rows.length - 1];
-  $('#pumpBarsNote').innerHTML = (td.produced || td.nursing || rec.length)
-    ? `Today: ${td.nursing} nursing session${td.nursing === 1 ? '' : 's'} (≈${BREASTFEED_ML} mL assumed each) + ${fmtVol(td.pumpedMl, u)} pumped ≈ <b>${fmtVol(td.produced, u)} produced</b>. She typically needs ${volRange(td.lo, td.hi, u)} a day` +
+  $('#pumpBarsNote').innerHTML = (td.produced || td.nurse.n || rec.length)
+    ? `Today: ${td.nurse.n} nursing session${td.nurse.n === 1 ? '' : 's'}${td.nurse.min ? ` (${td.nurse.min} min logged ≈ ${fmtVol(td.nursingMl, u)})` : ''}${td.nurse.uncounted ? ` · ${td.nurse.uncounted} without a duration, not counted` : ''} + ${fmtVol(td.pumpedMl, u)} pumped ≈ <b>${fmtVol(td.produced, u)} produced</b>. She typically needs ${volRange(td.lo, td.hi, u)} a day` +
       (td.gap ? `, so about <b>${fmtVol(td.gap, u)} of formula</b> would cover the rest.` : ' — that\'s covered without formula.')
     : 'Log a feeding or a pumping session to see today\'s estimate.';
   $('#pumpLog').innerHTML = entryRows([...all].sort((a, b) => b.t - a.t).slice(0, 40), 'No pumping sessions yet. Tap “Log pumping session”.');
