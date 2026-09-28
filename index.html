@@ -221,8 +221,9 @@ textarea { width: 100%; resize: vertical; }
 .statusgrid .btn span { font-size: 24px; line-height: 1; }
 .bars { display: grid; gap: 8px; }
 .bars .row { display: grid; grid-template-columns: 62px 1fr auto; gap: 10px; align-items: center; font-size: 13px; }
-.bars .track { height: 12px; border-radius: 6px; background: var(--chip); overflow: hidden; }
-.bars .track i { display: block; height: 100%; background: var(--pump); border-radius: 6px; }
+.bars .track { height: 12px; border-radius: 6px; background: var(--chip); overflow: hidden; position: relative; }
+.bars .track i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 6px; background: var(--pump); }
+.bars .track i.band { background: var(--meter-band); }
 .bars .val { color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
 table.meas { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.meas th, table.meas td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
@@ -315,7 +316,9 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
     <div class="card tracker" id="pfNext" style="margin-bottom:12px"></div>
     <div class="card tracker" id="pumpCard"></div>
     <section><div class="sec-title">Last 24 hours</div><div class="tiles" id="pumpTiles"></div><div class="fine" id="pumpStash" style="margin:8px 2px 0;display:grid;gap:4px"></div></section>
-    <section><div class="sec-title">Last 7 days</div><div class="card"><div class="bars" id="pumpBars"></div></div></section>
+    <section><div class="sec-title">Milk supply vs. what she needs</div><div class="card">
+      <div class="legend"><span><i class="dot pump-c"></i>Produced (pumped + nursing)</span><span><i class="ring" style="border-color:var(--meter-band)"></i>Typical need</span></div>
+      <div class="bars" id="pumpBars"></div><p class="fine" id="pumpBarsNote" style="margin-top:10px"></p></div></section>
     <section><div class="sec-title">Sessions</div><div class="card"><ul class="log" id="pumpLog"></ul></div></section>
   </div>
   <div class="view" id="v-journal" hidden>
@@ -740,6 +743,9 @@ function renderHero() {
 // Only feeds logged with an amount count toward "today's intake" — pure breastfeeding without a measured
 // amount isn't included, so the comparison can understate real intake for an exclusively breastfed baby.
 const dailyRange = d => { const r = bottleRange(d); return [r[0] * 8, r[1] * 12]; };
+// Actual milk transferred while nursing isn't measurable at home, so production estimates count
+// every nursing session at a flat assumed volume rather than trying to guess per session.
+const BREASTFEED_ML = 15;
 function renderIntakeMeter(d, totalMl, u, unmeasured) {
   const el = $('#intakeMeter');
   el.hidden = !totalMl;
@@ -979,10 +985,8 @@ const BUILDERS = {
       : d <= 14 ? `Roughly ${volRange(30, 120, u)} across both sides per session is common by the end of week 2, but the normal range is wide.`
       : 'Totals vary a lot between people and through the day. Your own trend matters more than any target.';
     const since = last ? Date.now() - last.t : 0;
-    // "Fed to baby?" is independent of storage and of when it was pumped: pump now, store it, and
-    // come back later (editing this session) to say when it was actually given. STORE_CHOICES drops
-    // the old 'fed' storage option, which this replaces; STORE itself still has it, for reading old data.
-    const STORE_CHOICES = STORE.filter(s => s[0] !== 'fed');
+    // "Fed to baby?" is independent of when it was pumped: pump now and come back later (editing
+    // this session) to say when it was actually given. Where it sat in the meantime isn't tracked.
     const wasFed = !!(src.fedAt || src.feedId || src.store === 'fed');
     const fedAtKnown = src.fedAt || (src.store === 'fed' ? src.t : null);
     return {
@@ -993,7 +997,6 @@ const BUILDERS = {
         <details class="addnote" ${src.lMl || src.rMl ? 'open' : ''}><summary>＋ Split by left / right</summary>
           <div class="field"><label class="l">Left</label>${stepper('lMl', v(src.lMl), { ml: 5 })}</div>
           <div class="field"><label class="l">Right</label>${stepper('rMl', v(src.rMl), { ml: 5 })}</div></details>
-        <div class="field"><label class="l">Where did it go?</label>${chips('store', STORE_CHOICES, src.store === 'fed' ? 'fridge' : (src.store ?? last?.store ?? 'fridge'))}<div id="ctxStore"></div></div>
         <div class="field"><label class="l">Fed to baby?</label>${chips('fed', [['0', 'Not yet'], ['1', 'Yes']], wasFed ? '1' : '0')}
           <div id="fedWhenWrap" ${wasFed ? '' : 'hidden'} style="margin-top:12px">${whenField(Date.now(), fedAtKnown, 'fedWhen', 'When was she fed?')}</div>
         </div>
@@ -1005,8 +1008,6 @@ const BUILDERS = {
         if (!ed && since > 4 * H) ctx.push({ level: 'watch', text: `It has been ${dur(since)} since the last session. Early on, try to pump at least every 3–4 hours.` });
         $('#ctxDur').innerHTML = ctxHtml([...ctx, { level: 'ok', text: 'About 15–20 minutes, or until milk has stopped flowing for about 2 minutes. Early on, 8 sessions in 24 hours (including one overnight) helps build supply.' }]);
         $('#ctxVol').innerHTML = ctxHtml([{ level: 'ok', text: expect(u) }]);
-        const stv = f.elements.store.value;
-        $('#ctxStore').innerHTML = ctxHtml([{ level: 'ok', text: stv === 'discarded' ? "Discarded milk isn't counted in your estimated stash." : 'Fridge up to 4 days · freezer about 6 months. Label with the date and use the oldest first.' }]);
         $('#fedWhenWrap').hidden = f.elements.fed.value !== '1';
       },
       collect(f, entry) {
@@ -1015,7 +1016,7 @@ const BUILDERS = {
         const l = readMl(el.lMl, u), r = readMl(el.rMl, u), total = l + r || readMl(el.tot, u);
         if (!total && !entry.dur) return 'Add the amount or the duration.';
         entry.lMl = l || undefined; entry.rMl = r || undefined; entry.amt = total || undefined;
-        entry.unit = u; entry.store = el.store.value || undefined;
+        entry.unit = u;
         entry.fed = el.fed.value === '1';
         if (entry.fed) entry.fedAt = readWhen(f, 'fedWhen');
       },
@@ -1218,13 +1219,32 @@ function renderPump(now) {
   $('#pfNext').innerHTML = `<div class="head"><i class="dot pump-c"></i>Next feed &amp; next pump</div>${nx('feed-c', '🍼 Feeding', byType('feed'), feedInterval())}${nx('pump-c', '🥛 Pumping', all, iv)}
     <div class="twoBtn"><button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button><button class="logbtn pump-c" data-log="pump">🥛 Log pumping</button></div>
     ${up.length ? `<div class="up"><b>Coming up:</b> ${up.map(x => `<span class="pill2">${fmtT(x.start)} ${x.kind === 'feed' ? '🍼' : '🥛'}</span>`).join('')}</div>` : ''}`;
-  const kept = all.filter(l => (l.store === 'fridge' || l.store === 'freezer') && !l.fedAt).reduce((a, l) => a + (l.amt || 0), 0);
-  $('#pumpStash').innerHTML = lines.map(x => `<span>${x}</span>`).join('') + (all.length ? `<span>Pumped &amp; stored, not yet fed: ${fmtVol(kept, u)}. A session drops out once you mark it fed to baby.</span>` : '');
-  // last 7 days
+  $('#pumpStash').innerHTML = lines.map(x => `<span>${x}</span>`).join('');
+  // Milk supply vs. what she needs, last 7 days: production = pumped mL + (nursing sessions × BREASTFEED_ML),
+  // need = the typical daily range for that day of life (also used for the Track-tab intake meter),
+  // and the gap between them is roughly how much formula would cover the rest.
   const days = Array.from({ length: 7 }, (_, i) => { const dt = new Date(now); dt.setHours(0, 0, 0, 0); dt.setDate(dt.getDate() - (6 - i)); return dt; });
-  const rows = days.map(dt => { const t0 = dt.getTime(), t1 = t0 + 24 * H, ss = all.filter(l => l.t >= t0 && l.t < t1); return { dt, n: ss.length, ml: ss.reduce((a, l) => a + (l.amt || 0), 0) }; });
-  const max = Math.max(1, ...rows.map(r => r.ml));
-  $('#pumpBars').innerHTML = rows.map(r => `<div class="row"><span>${r.dt.toLocaleDateString([], { weekday: 'short', day: 'numeric' })}</span><span class="track" role="img" aria-label="${fmtVol(r.ml, u)}"><i style="width:${r.ml / max * 100}%"></i></span><span class="val">${r.n ? `${fmtVol(r.ml, u)} · ${r.n}×` : '–'}</span></div>`).join('');
+  const rows = days.map(dt => {
+    const t0 = dt.getTime(), t1 = t0 + 24 * H;
+    const pumpedMl = all.filter(l => l.t >= t0 && l.t < t1).reduce((a, l) => a + (l.amt || 0), 0);
+    const nursing = state.logs.filter(l => l.type === 'feed' && l.t >= t0 && l.t < t1).map(feedView).filter(v => v.src === 'breast' || v.src === 'mixed').length;
+    const produced = pumpedMl + nursing * BREASTFEED_ML;
+    const [lo, hi] = dailyRange(dayOfLife(t0 + 12 * H));
+    return { dt, nursing, pumpedMl, produced, lo, hi, gap: Math.max(0, Math.round((lo + hi) / 2) - produced) };
+  });
+  const scaleMax = Math.max(1, ...rows.map(r => Math.max(r.produced, r.hi)));
+  $('#pumpBars').innerHTML = rows.map(r => {
+    const bandLeft = r.lo / scaleMax * 100, bandW = (r.hi - r.lo) / scaleMax * 100, fillW = Math.min(100, r.produced / scaleMax * 100);
+    const ok = r.produced >= r.lo;
+    return `<div class="row"><span>${r.dt.toLocaleDateString([], { weekday: 'short', day: 'numeric' })}</span>
+      <span class="track" role="img" aria-label="${fmtVol(r.produced, u)} produced against a typical need of ${volRange(r.lo, r.hi, u)}"><i class="band" style="left:${bandLeft}%;width:${bandW}%"></i><i style="width:${fillW}%;background:${ok ? 'var(--good)' : 'var(--warn)'}"></i></span>
+      <span class="val">${r.produced ? fmtVol(r.produced, u) : '–'}${r.gap ? ` · +${fmtVol(r.gap, u)} formula` : ''}</span></div>`;
+  }).join('');
+  const td = rows[rows.length - 1];
+  $('#pumpBarsNote').innerHTML = (td.produced || td.nursing || rec.length)
+    ? `Today: ${td.nursing} nursing session${td.nursing === 1 ? '' : 's'} (≈${BREASTFEED_ML} mL assumed each) + ${fmtVol(td.pumpedMl, u)} pumped ≈ <b>${fmtVol(td.produced, u)} produced</b>. She typically needs ${volRange(td.lo, td.hi, u)} a day` +
+      (td.gap ? `, so about <b>${fmtVol(td.gap, u)} of formula</b> would cover the rest.` : ' — that\'s covered without formula.')
+    : 'Log a feeding or a pumping session to see today\'s estimate.';
   $('#pumpLog').innerHTML = entryRows([...all].sort((a, b) => b.t - a.t).slice(0, 40), 'No pumping sessions yet. Tap “Log pumping session”.');
 }
 
