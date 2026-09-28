@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Baby">
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon.png">
 <title>Newborn Tracker</title>
 <style>
 :root {
@@ -22,6 +24,7 @@
   --diaper: #3b82d6; /* powder blue */
   --note: #bd7a12;   /* honey */
   --pump: #2a8f82;   /* teal */
+  --formula: #d99a2b; /* amber */
   --journal: #7c5fc4; /* violet */
   --btn-feed: #b03a66; --btn-diaper: #2f6fc0; --btn-note: #8f5b0a; --btn-pump: #1f766b; --btn-journal: #6a4bb3; --on-btn: #ffffff;
   --accent: #b03a66;
@@ -37,7 +40,7 @@
     color-scheme: dark;
     --bg: #191214; --glow: #2b1a21; --surface: #241a1d; --ink: #f6ebee; --ink-2: #cdb9c0; --muted: #9a868d;
     --line: #382a2f; --chip: #2f2226; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.25);
-    --feed: #d45f8a; --diaper: #3987e5; --note: #c98500; --pump: #3fb3a4; --journal: #9a86e6;
+    --feed: #d45f8a; --diaper: #3987e5; --note: #c98500; --pump: #3fb3a4; --formula: #e8b74e; --journal: #9a86e6;
     --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --btn-pump: #3fb3a4; --btn-journal: #9a86e6; --on-btn: #1c1416; --accent: #d45f8a;
     --good: #6fcf8f; --warn: #f0b429; --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a1d;
     --meter-band: rgba(255, 255, 255, 0.12);
@@ -47,7 +50,7 @@
   color-scheme: dark;
   --bg: #191214; --glow: #2b1a21; --surface: #241a1d; --ink: #f6ebee; --ink-2: #cdb9c0; --muted: #9a868d;
   --line: #382a2f; --chip: #2f2226; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.25);
-  --feed: #d45f8a; --diaper: #3987e5; --note: #c98500; --pump: #3fb3a4; --journal: #9a86e6;
+  --feed: #d45f8a; --diaper: #3987e5; --note: #c98500; --pump: #3fb3a4; --formula: #e8b74e; --journal: #9a86e6;
   --btn-feed: #d45f8a; --btn-diaper: #3987e5; --btn-note: #c98500; --btn-pump: #3fb3a4; --btn-journal: #9a86e6; --on-btn: #1c1416; --accent: #d45f8a;
   --good: #6fcf8f; --warn: #f0b429; --warn-bg: #3a2f10; --crit: #ff8a80; --crit-bg: #3d1a1d;
   --meter-band: rgba(255, 255, 255, 0.12);
@@ -61,7 +64,15 @@ body {
   font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   padding: env(safe-area-inset-top) 16px calc(32px + env(safe-area-inset-bottom));
 }
-main { max-width: 760px; margin: 0 auto; }
+main { max-width: 980px; margin: 0 auto; }
+.pfGrid { display: grid; grid-template-columns: 1fr; column-gap: 28px; row-gap: 24px; margin-top: 16px; }
+.pfGrid:first-of-type { margin-top: 0; }
+.pfCol { min-width: 0; }
+.pfColHead { font-size: 15px; font-weight: 600; margin: 0 2px 10px; display: flex; align-items: center; gap: 6px; }
+@media (min-width: 760px) {
+  .pfGrid { grid-template-columns: 1fr 1fr; }
+  .pfCol.pump { border-left: 1px solid var(--line); padding-left: 28px; }
+}
 h1, h2, h3, p { margin: 0; }
 button { font: inherit; color: inherit; cursor: pointer; }
 
@@ -224,6 +235,8 @@ textarea { width: 100%; resize: vertical; }
 .bars .track { height: 12px; border-radius: 6px; background: var(--chip); overflow: hidden; position: relative; }
 .bars .track i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 6px; background: var(--pump); }
 .bars .track i.band { background: var(--meter-band); }
+.bars .track i.breast, .bars .track i.formula { border-radius: 0; }
+.bars .track i.formula { background: var(--formula); }
 .bars .val { color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
 table.meas { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.meas th, table.meas td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
@@ -257,18 +270,29 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
 
   <div class="view" id="v-track">
   <div class="card tracker" id="pfNext" style="margin-bottom:12px"></div>
-  <div class="card tracker" id="feedCard"></div>
-  <button class="btn wide" data-log="note" type="button"><i class="dot note-c"></i>Spit-up or note</button>
-  <div class="callout tips" id="now" style="margin-top:12px"></div>
+
+  <div class="pfGrid">
+    <div class="pfCol feed">
+      <div class="pfColHead"><i class="dot feed-c"></i>Feeding</div>
+      <div class="card tracker" id="feedCard"></div>
+      <button class="btn wide" data-log="note" type="button"><i class="dot note-c"></i>Spit-up or note</button>
+      <div class="callout tips" id="now" style="margin-top:12px"></div>
+      <section>
+        <div class="sec-title">Last 24 hours</div>
+        <div class="tiles" id="tiles"></div>
+        <div class="card" id="intakeMeter" style="margin-top:10px"></div>
+      </section>
+    </div>
+
+    <div class="view pfCol pump" id="v-pump">
+      <div class="pfColHead"><i class="dot pump-c"></i>Pumping</div>
+      <div class="card tracker" id="pumpCard"></div>
+      <section><div class="sec-title">Last 24 hours</div><div class="tiles" id="pumpTiles"></div><div class="fine" id="pumpStash" style="margin:8px 2px 0;display:grid;gap:4px"></div></section>
+    </div>
+  </div>
 
   <section>
-    <div class="sec-title">Last 24 hours</div>
-    <div class="tiles" id="tiles"></div>
-    <div class="card" id="intakeMeter" style="margin-top:10px"></div>
-  </section>
-
-  <section>
-    <div class="sec-title">Timeline</div>
+    <div class="sec-title"><i class="dot feed-c" style="display:inline-block;margin-right:6px"></i>Feeding timeline</div>
     <div class="card">
       <div class="legend">
         <span><i class="dot feed-c"></i>Feeding</span>
@@ -280,7 +304,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   </section>
 
   <section>
-    <div class="sec-title">Upcoming schedule &amp; calendar</div>
+    <div class="sec-title"><i class="dot feed-c" style="display:inline-block;margin-right:6px"></i>Upcoming feeds &amp; calendar</div>
     <div class="card">
       <div class="sched" id="sched"></div>
       <div class="settings">
@@ -300,9 +324,30 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   </section>
 
   <section>
-    <div class="sec-title">Log</div>
-    <div class="card"><ul class="log" id="log"></ul></div>
+    <div class="sec-title"><i class="dot pump-c" style="display:inline-block;margin-right:6px"></i>Breast milk &amp; formula vs. what she needs</div>
+    <div class="card">
+      <div class="legend"><span><i class="dot" style="background:var(--pump)"></i>Breast milk</span><span><i class="dot" style="background:var(--formula)"></i>Formula</span><span><i class="ring" style="border-color:var(--meter-band)"></i>Typical need</span></div>
+      <div class="bars" id="pumpBars"></div><p class="fine" id="pumpBarsNote" style="margin-top:10px"></p>
+    </div>
   </section>
+
+  <section>
+    <div class="sec-title"><i class="dot pump-c" style="display:inline-block;margin-right:6px"></i>Daily pumping output</div>
+    <div class="card">
+      <div class="bars" id="pumpOutBars"></div><p class="fine" id="pumpOutNote" style="margin-top:10px"></p>
+    </div>
+  </section>
+
+  <div class="pfGrid">
+    <div class="pfCol feed">
+      <details class="card more-all"><summary style="cursor:pointer;font-weight:600">Feed log</summary>
+        <ul class="log" id="log" style="margin-top:12px"></ul></details>
+    </div>
+    <div class="pfCol pump">
+      <details class="card more-all"><summary style="cursor:pointer;font-weight:600">Pumping sessions</summary>
+        <ul class="log" id="pumpLog" style="margin-top:12px"></ul></details>
+    </div>
+  </div>
 
   <section>
     <details class="card more-all">
@@ -311,15 +356,6 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
       <p class="fine">General guidance in line with AAP, CDC and NHS newborn advice. It's a reference, not medical advice. Your pediatrician and lactation consultant know her best.</p>
     </details>
   </section>
-  </div>
-
-  <div class="view" id="v-pump" hidden>
-    <div class="card tracker" id="pumpCard"></div>
-    <section><div class="sec-title">Last 24 hours</div><div class="tiles" id="pumpTiles"></div><div class="fine" id="pumpStash" style="margin:8px 2px 0;display:grid;gap:4px"></div></section>
-    <section><div class="sec-title">Milk supply vs. what she needs</div><div class="card">
-      <div class="legend"><span><i class="dot pump-c"></i>Produced (pumped + nursing)</span><span><i class="ring" style="border-color:var(--meter-band)"></i>Typical need</span></div>
-      <div class="bars" id="pumpBars"></div><p class="fine" id="pumpBarsNote" style="margin-top:10px"></p></div></section>
-    <section><div class="sec-title">Sessions</div><div class="card"><ul class="log" id="pumpLog"></ul></div></section>
   </div>
   <div class="view" id="v-journal" hidden>
     <div class="card tracker" id="jStatus"></div>
@@ -356,7 +392,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
 let BIRTH = Date.now(), NAME = 'Baby';
 const H = 3600e3, M = 60e3;
 const FEED_SLOTS = 4, PUMP_SLOTS = 3;
-const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1', LS_VIEW = 'newborn-view-v1', LS_TIMER = 'newborn-timer-v1';
+const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1', LS_VIEW = 'newborn-view-v1', LS_TIMER = 'newborn-timer-v1', LS_PUMP_TIMER = 'newborn-pump-timer-v1';
 
 const FEED_PARTS = [['breast', 'Breast'], ['formula', 'Formula'], ['pumped', 'Pumped milk']];
 const SIDES = [['L', 'Left'], ['R', 'Right']];
@@ -691,6 +727,7 @@ function feedTiming() {
    Local to this device only (localStorage), so it survives a reload or the phone locking, but two
    devices don't see the same running timer. */
 let timer = null; // { startedAt, side } or null
+let pumpTimer = null; // { startedAt } or null
 const fmtElapsed = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 function lastBreastSide() {
   const last = byType('feed').map(normFeed).filter(n => String(n.kind).split(',').includes('breast') && n.sides).pop();
@@ -720,7 +757,53 @@ function timerStopQuiet() {    // Siri/Shortcuts hash hook: log immediately, no 
   if (sync) op(sync.op);
   toast(`Logged: ${detail(entry)}${sync ? ' (also added to Pumping)' : ''}`, 8000, { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (sync) sync.undo(); } });
 }
+// Siri/Shortcuts hash hook for a feed that varies every time: #quick=feed-custom&src=…&ago=…&min=…&amt=…
+// `src` is matched loosely (dictated text like "pumped milk" still hits 'pumped') and defaults to formula
+// when unclear, since that's the safer misfire (an Undo toast is always offered either way).
+function logFeedFromQuick(h) {
+  const raw = (h.get('src') || '').toLowerCase();
+  const src = raw.includes('breast') ? 'breast' : raw.includes('pump') ? 'pumped' : 'formula';
+  const min = Math.max(0, Math.round(parseFloat(h.get('min')) || 0));
+  const amt = Math.max(0, Math.round(parseFloat(h.get('amt')) || 0));
+  const ago = Math.max(0, parseFloat(h.get('ago')) || 0);
+  const entry = { id: uid(), type: 'feed', t: Date.now() - ago * M, kind: src };
+  if (src === 'breast') {
+    entry.sides = lastBreastSide();
+    if (min) entry.min = min;
+  } else {
+    if (src === 'formula') entry.fMl = amt; else entry.pMl = amt;
+    if (amt) { entry.amt = amt; entry.unit = 'ml'; }
+  }
+  const sync = syncFeedPumpEcho(entry, null);
+  op({ op: 'add', entry });
+  if (sync) op(sync.op);
+  toast(`Logged via Siri: ${detail(entry)}`, 8000, { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (sync) sync.undo(); } });
+}
 setInterval(() => { if (timer) { const el = $('#timerClock'); if (el) el.textContent = fmtElapsed(Date.now() - timer.startedAt); } }, 1000);
+
+// Pumping timer: same idea as the nursing timer (persisted locally, derived from a startedAt
+// timestamp), but simpler — no side to track, and it hands off to the pump sheet to collect the
+// amount, since unlike nursing there's an actual number to read off the pump afterward.
+function pumpTimerStart() { pumpTimer = { startedAt: Date.now() }; lsSet(LS_PUMP_TIMER, pumpTimer); render(); }
+function pumpTimerCancel() { pumpTimer = null; lsSet(LS_PUMP_TIMER, null); render(); }
+function pumpTimerStopEntry() {
+  if (!pumpTimer) return null;
+  const t = pumpTimer, dur = Math.max(1, Math.round((Date.now() - t.startedAt) / M));
+  pumpTimer = null; lsSet(LS_PUMP_TIMER, null);
+  return { id: uid(), type: 'pump', t: t.startedAt, dur };
+}
+function pumpTimerStopAndLog() {   // in-app "Stop & log": review in the sheet to add the amount
+  if (!pumpTimer) return;
+  const t = pumpTimer, dur = Math.max(1, Math.round((Date.now() - t.startedAt) / M));
+  pumpTimer = null; lsSet(LS_PUMP_TIMER, null);
+  openSheet('pump', { timer: { t: t.startedAt, dur } });
+}
+function pumpTimerStopQuiet() {    // Siri/Shortcuts hash hook: log immediately, no screen needed
+  const entry = pumpTimerStopEntry(); if (!entry) return;
+  op({ op: 'add', entry });
+  toast(`Logged: ${detail(entry)}`, 8000, { label: 'Undo', fn: () => op({ op: 'delete', id: entry.id }) });
+}
+setInterval(() => { if (pumpTimer) { const el = $('#pumpTimerClock'); if (el) el.textContent = fmtElapsed(Date.now() - pumpTimer.startedAt); } }, 1000);
 
 function renderHero() {
   const last = byType('feed').pop(), rep = repeatEntry(last);
@@ -758,6 +841,15 @@ function estimatedFeedMl(e) {
   const v = feedView(e), n = normFeed(e);
   const breastMl = (v.src === 'breast' || v.src === 'mixed') && n.min ? n.min * BREASTFEED_ML_PER_MIN : 0;
   return (v.amt || 0) + breastMl || undefined;
+}
+// Splits a feed entry's estimated volume into breast milk (nursing estimate, plus any pumped milk
+// that was bottle-fed — still her milk either way) vs. formula, for the breast/formula/need chart.
+// Legacy single-field entries can't tell formula from a pumped bottle, so an unlabeled bottle counts as formula.
+function feedIntakeParts(e) {
+  if (isSimpleFeed(e)) return e.kind === 'breast' ? { breastMl: e.amt || 0, formulaMl: 0 } : { breastMl: 0, formulaMl: e.amt || 0 };
+  const n = normFeed(e), parts = String(n.kind).split(',');
+  const breastMl = (parts.includes('breast') && n.min ? n.min * BREASTFEED_ML_PER_MIN : 0) + (n.pMl || 0);
+  return { breastMl, formulaMl: n.fMl || 0 };
 }
 function renderIntakeMeter(d, totalMl, u, unmeasured) {
   const el = $('#intakeMeter');
@@ -989,7 +1081,8 @@ const BUILDERS = {
     };
   },
 
-  pump(ed, at, d) {
+  pump(ed, at, d, opts = {}) {
+    const timerData = !ed && opts.timer; // arriving from "Stop & log pumping": prefill duration
     const last = byType('pump').filter(l => !ed || l.id !== ed.id).pop();
     const unit = ed?.unit || defaultUnit('pump');
     const v = (ml) => ml ? fromMl(ml, unit) : '';
@@ -1005,7 +1098,7 @@ const BUILDERS = {
     const fedAtKnown = src.fedAt || (src.store === 'fed' ? src.t : null);
     return {
       title: '🥛 Pumping session', vol: ['tot', 'lMl', 'rMl'], canon: { tot: src.amt, lMl: src.lMl, rMl: src.rMl },
-      body: `<div class="field"><label class="l">Duration, minutes</label>${stepper('dur', src.dur ?? last?.dur ?? 15, { fix: 5 })}<div id="ctxDur"></div></div>
+      body: `<div class="field"><label class="l">Duration, minutes</label>${stepper('dur', src.dur ?? (timerData ? timerData.dur : last?.dur) ?? 15, { fix: 5 })}<div id="ctxDur"></div></div>
         ${unitField(unit)}
         <div class="field"><label class="l">Total pumped</label>${stepper('tot', v(src.amt ?? last?.amt), { ml: 5 })}<div id="ctxVol"></div></div>
         <details class="addnote" ${src.lMl || src.rMl ? 'open' : ''}><summary>＋ Split by left / right</summary>
@@ -1214,7 +1307,15 @@ function renderPump(now) {
   const tip = !last ? 'Early on, aim for about 8 sessions in 24 hours, including one overnight. Log your first session to start the reminders.'
     : since > 4 * H ? `It has been ${dur(since)}. Try to pump at least every 3–4 hours in the early weeks.`
     : 'On track. About 8 sessions in 24 hours, including one overnight, helps build supply in the early weeks.';
-  heroCard('#pumpCard', 'pump-c', 'Pumping', all, iv, `<button class="logbtn pump-c" data-log="pump">🥛 Log pumping session</button>`, tip, ['Pumping tips', TIPS.pump]);
+  const pumpActions = pumpTimer
+    ? `<div class="timerRun">
+        <div class="timerClock" id="pumpTimerClock" style="color:var(--pump)">${fmtElapsed(now - pumpTimer.startedAt)}</div>
+        <div class="fine" style="margin:2px 0 0">Pumping · started ${fmtT(pumpTimer.startedAt)}</div>
+        <button type="button" class="btn wide" style="margin-top:10px" data-ptimer="cancel">✕ Cancel</button>
+        <button type="button" class="logbtn pump-c" data-ptimer="stop">■ Stop &amp; log pumping</button>
+      </div>`
+    : `<button class="logbtn pump-c" data-log="pump">🥛 Log pumping session</button><button type="button" class="btn wide2" data-ptimer="start">▶ Start pumping timer</button>`;
+  heroCard('#pumpCard', 'pump-c', 'Pumping', all, iv, pumpActions, tip, ['Pumping tips', TIPS.pump]);
   const rec = all.filter(l => now - l.t < 24 * H), total = rec.reduce((a, l) => a + (l.amt || 0), 0);
   const feeds24 = state.logs.filter(l => l.type === 'feed' && now - l.t < 24 * H);
   const tile = (k, v, g) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">${g}</div></div>`;
@@ -1235,34 +1336,50 @@ function renderPump(now) {
     <div class="twoBtn"><button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button><button class="logbtn pump-c" data-log="pump">🥛 Log pumping</button></div>
     ${up.length ? `<div class="up"><b>Coming up:</b> ${up.map(x => `<span class="pill2">${fmtT(x.start)} ${x.kind === 'feed' ? '🍼' : '🥛'}</span>`).join('')}</div>` : ''}`;
   $('#pumpStash').innerHTML = lines.map(x => `<span>${x}</span>`).join('');
-  // Milk supply vs. what she needs, last 7 days: production = pumped mL + (logged nursing minutes ×
-  // BREASTFEED_ML_PER_MIN), need = the typical daily range for that day of life (also used for the
-  // Track-tab intake meter), and the gap between them is roughly how much formula would cover the rest.
   const days = Array.from({ length: 7 }, (_, i) => { const dt = new Date(now); dt.setHours(0, 0, 0, 0); dt.setDate(dt.getDate() - (6 - i)); return dt; });
-  const rows = days.map(dt => {
+  // Breast milk & formula vs. what she needs, last 7 days: breast milk = nursing estimate (logged
+  // minutes × BREASTFEED_ML_PER_MIN) plus any pumped milk that was bottle-fed; formula = formula
+  // actually fed. Need is the typical daily range for that day of life (also used for the Track-tab
+  // intake meter).
+  const needRows = days.map(dt => {
     const t0 = dt.getTime(), t1 = t0 + 24 * H;
-    const pumpedMl = all.filter(l => l.t >= t0 && l.t < t1).reduce((a, l) => a + (l.amt || 0), 0);
-    const nurse = state.logs.filter(l => l.type === 'feed' && l.t >= t0 && l.t < t1).reduce((a, l) => {
-      const v = feedView(l); if (v.src !== 'breast' && v.src !== 'mixed') return a;
-      const min = normFeed(l).min; a.n++; if (min) a.min += min; else a.uncounted++; return a;
-    }, { n: 0, min: 0, uncounted: 0 });
-    const nursingMl = Math.round(nurse.min * BREASTFEED_ML_PER_MIN), produced = pumpedMl + nursingMl;
+    const dayFeeds = state.logs.filter(l => l.type === 'feed' && l.t >= t0 && l.t < t1);
+    const intake = dayFeeds.reduce((a, l) => { const p = feedIntakeParts(l); a.breastMl += p.breastMl; a.formulaMl += p.formulaMl; return a; }, { breastMl: 0, formulaMl: 0 });
+    const breastMl = Math.round(intake.breastMl), formulaMl = Math.round(intake.formulaMl), total = breastMl + formulaMl;
     const [lo, hi] = dailyRange(dayOfLife(t0 + 12 * H));
-    return { dt, nurse, pumpedMl, nursingMl, produced, lo, hi, gap: Math.max(0, Math.round((lo + hi) / 2) - produced) };
+    return { dt, breastMl, formulaMl, total, lo, hi, gap: Math.max(0, Math.round((lo + hi) / 2) - total) };
   });
-  const scaleMax = Math.max(1, ...rows.map(r => Math.max(r.produced, r.hi)));
-  $('#pumpBars').innerHTML = rows.map(r => {
-    const bandLeft = r.lo / scaleMax * 100, bandW = (r.hi - r.lo) / scaleMax * 100, fillW = Math.min(100, r.produced / scaleMax * 100);
-    const ok = r.produced >= r.lo;
+  const needScale = Math.max(1, ...needRows.map(r => Math.max(r.total, r.hi)));
+  $('#pumpBars').innerHTML = needRows.map(r => {
+    const bandLeft = r.lo / needScale * 100, bandW = (r.hi - r.lo) / needScale * 100;
+    const breastW = r.breastMl / needScale * 100, formulaW = r.formulaMl / needScale * 100;
+    const label = [r.breastMl ? `${fmtVol(r.breastMl, u)} breast milk` : null, r.formulaMl ? `${fmtVol(r.formulaMl, u)} formula` : null].filter(Boolean).join(' + ') || '–';
     return `<div class="row"><span>${r.dt.toLocaleDateString([], { weekday: 'short', day: 'numeric' })}</span>
-      <span class="track" role="img" aria-label="${fmtVol(r.produced, u)} produced against a typical need of ${volRange(r.lo, r.hi, u)}"><i class="band" style="left:${bandLeft}%;width:${bandW}%"></i><i style="width:${fillW}%;background:${ok ? 'var(--good)' : 'var(--warn)'}"></i></span>
-      <span class="val">${r.produced ? fmtVol(r.produced, u) : '–'}${r.gap ? ` · +${fmtVol(r.gap, u)} formula` : ''}</span></div>`;
+      <span class="track" role="img" aria-label="${fmtVol(r.total, u)} fed against a typical need of ${volRange(r.lo, r.hi, u)}"><i class="band" style="left:${bandLeft}%;width:${bandW}%"></i><i class="breast" style="left:0%;width:${breastW}%"></i><i class="formula" style="left:${breastW}%;width:${formulaW}%"></i></span>
+      <span class="val">${label}${r.gap ? ` · +${fmtVol(r.gap, u)} more` : ''}</span></div>`;
   }).join('');
-  const td = rows[rows.length - 1];
-  $('#pumpBarsNote').innerHTML = (td.produced || td.nurse.n || rec.length)
-    ? `Today: ${td.nurse.n} nursing session${td.nurse.n === 1 ? '' : 's'}${td.nurse.min ? ` (${td.nurse.min} min logged ≈ ${fmtVol(td.nursingMl, u)})` : ''}${td.nurse.uncounted ? ` · ${td.nurse.uncounted} without a duration, not counted` : ''} + ${fmtVol(td.pumpedMl, u)} pumped ≈ <b>${fmtVol(td.produced, u)} produced</b>. She typically needs ${volRange(td.lo, td.hi, u)} a day` +
-      (td.gap ? `, so about <b>${fmtVol(td.gap, u)} of formula</b> would cover the rest.` : ' — that\'s covered without formula.')
-    : 'Log a feeding or a pumping session to see today\'s estimate.';
+  const td = needRows[needRows.length - 1];
+  $('#pumpBarsNote').innerHTML = td.total
+    ? `Today: ${fmtVol(td.breastMl, u)} breast milk + ${fmtVol(td.formulaMl, u)} formula ≈ <b>${fmtVol(td.total, u)} total</b>. She typically needs ${volRange(td.lo, td.hi, u)} a day` +
+      (td.gap ? `, so about <b>${fmtVol(td.gap, u)} more</b> would close the gap.` : ' — that\'s covered.')
+    : 'Log a feeding to see today\'s breakdown.';
+  // Daily pumping output: just what actually came out of the pump, no comparison to need.
+  const pumpRows = days.map(dt => {
+    const t0 = dt.getTime(), t1 = t0 + 24 * H;
+    const dayPumps = all.filter(l => l.t >= t0 && l.t < t1);
+    return { dt, pumpedMl: dayPumps.reduce((a, l) => a + (l.amt || 0), 0), n: dayPumps.length };
+  });
+  const pumpScale = Math.max(1, ...pumpRows.map(r => r.pumpedMl));
+  $('#pumpOutBars').innerHTML = pumpRows.map(r => {
+    const fillW = Math.min(100, r.pumpedMl / pumpScale * 100);
+    return `<div class="row"><span>${r.dt.toLocaleDateString([], { weekday: 'short', day: 'numeric' })}</span>
+      <span class="track" role="img" aria-label="${fmtVol(r.pumpedMl, u)} pumped"><i style="width:${fillW}%;background:var(--pump)"></i></span>
+      <span class="val">${r.pumpedMl ? fmtVol(r.pumpedMl, u) : '–'}${r.n ? ` · ${r.n} session${r.n === 1 ? '' : 's'}` : ''}</span></div>`;
+  }).join('');
+  const weekTotal = pumpRows.reduce((a, r) => a + r.pumpedMl, 0);
+  $('#pumpOutNote').textContent = weekTotal
+    ? `${fmtVol(weekTotal, u)} pumped over the last 7 days, averaging ${fmtVol(Math.round(weekTotal / 7), u)}/day.`
+    : 'Log a pumping session to see daily output here.';
   $('#pumpLog').innerHTML = entryRows([...all].sort((a, b) => b.t - a.t).slice(0, 40), 'No pumping sessions yet. Tap “Log pumping session”.');
 }
 
@@ -1398,6 +1515,8 @@ document.addEventListener('click', e => {
   const q = e.target.closest('[data-quick]'); if (q) return repeatFeed();
   const tm = e.target.closest('[data-timer]');
   if (tm) return ({ start: timerStart, switch: timerSwitch, cancel: timerCancel, stop: timerStopAndLog })[tm.dataset.timer]?.();
+  const ptm = e.target.closest('[data-ptimer]');
+  if (ptm) return ({ start: pumpTimerStart, cancel: pumpTimerCancel, stop: pumpTimerStopAndLog })[ptm.dataset.ptimer]?.();
   const l = e.target.closest('[data-log]'); if (l) return openSheet(l.dataset.log, { kind: l.dataset.kind, weightOnly: !!l.dataset.weight });
   const ed = e.target.closest('[data-edit]'); if (ed) { const en = state.logs.find(x => x.id === ed.dataset.edit); if (en) openSheet(en.type, { edit: en }); return; }
   const stt = e.target.closest('[data-status]'); if (stt) return quickStatus(stt.dataset.status);
@@ -1445,7 +1564,7 @@ $('#mode').addEventListener('click', openSettings);
 /* ---------- boot ---------- */
 (async function boot() {
   state = lsGet(LS) || state; state.settings = state.settings || {};
-  pending = lsGet(LS_PEND) || []; cfg = lsGet(LS_CFG); timer = lsGet(LS_TIMER) || null;
+  pending = lsGet(LS_PEND) || []; cfg = lsGet(LS_CFG); timer = lsGet(LS_TIMER) || null; pumpTimer = lsGet(LS_PUMP_TIMER) || null;
   // One-time setup link: https://…/#u=<web app url>&k=<secret>. The hash never leaves the browser.
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get('u') && h.get('k')) { history.replaceState(null, '', location.pathname + location.search); render(); await connect({ url: h.get('u'), key: h.get('k') }, {}); }
@@ -1457,6 +1576,9 @@ $('#mode').addEventListener('click', openSettings);
     if (quick === 'timer-start' && !timer) timerStart();
     else if (quick === 'timer-stop' && timer) timerStopQuiet();
     else if (quick === 'feed-repeat') repeatFeed();
+    else if (quick === 'feed-custom') logFeedFromQuick(h);
+    else if (quick === 'pump-timer-start' && !pumpTimer) pumpTimerStart();
+    else if (quick === 'pump-timer-stop' && pumpTimer) pumpTimerStopQuiet();
   }
   render(); showView(lsGet(LS_VIEW) === 'journal' ? 'journal' : 'track', false); // "pump" was its own tab before Feed & Pump merged
   if (cfg) { await pull(); if (!connected) { serverRev = -1; try { const j = await api('state'); state = j.state; serverRev = j.state.rev; connected = true; } catch {} } render(); flush(); syncCalendar(true); }

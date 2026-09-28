@@ -52,13 +52,19 @@ On iPhone: Share → **Add to Home Screen**.
 **Settings → Calendar → Accounts → Add Account → Google**, sign in with the same Google
 account and turn on **Calendars**. The baby's calendar appears in the Calendar app.
 If it doesn't, open <https://calendar.google.com/calendar/syncselect> and tick it.
-Events carry a 5-minute alert, and they move each time you log a feed or change.
-(Share the calendar with your partner from Google Calendar → Settings → Share.)
+Events carry a 10-minute alert, except predicted overnight feeds (midnight–6 AM),
+which sync to the calendar without an alert so they don't wake you before she does.
+They move each time you log a feed or change. (Share the calendar with your partner
+from Google Calendar → Settings → Share.)
 
 ## Tabs
-- **Track**: log a feed by picking any mix of breast, formula and pumped milk, each with its own amount (mL/oz, in 5 mL steps) — breast also gets minutes and a side. Tap "＋ Spit-up or note", and see a "Same as last" one-tap button once you've logged one.
-- **Nursing timer**: tap **▶ Start nursing timer** on the Feeding card when she latches, **⇄ Switch side** if she swaps, **■ Stop & log feeding** when done — it fills in the duration and the exact start time for you, so there's nothing to estimate or type.
-- **Pump / Feed**: next feed and next pump side by side with a merged "coming up" list, pumping sessions with duration and total (optionally left/right), 24-hour totals, and a 7-day **milk supply vs. what she needs** chart — daily production (pumped mL, plus nursing minutes at 2 mL/min, since actual transfer isn't measurable) against her typical daily need, with the formula gap spelled out for today.
+- **Feed & Pump**: feeding and pumping side by side (two columns on a wide screen,
+  stacked but clearly separate on a phone) — they're never blended into one card,
+  since pumping milk doesn't mean it's been fed yet.
+  - **Feeding**: log a feed by picking any mix of breast, formula and pumped milk, each with its own amount (mL/oz, in 5 mL steps) — breast also gets minutes and a side. Tap "＋ Spit-up or note", and see a "Same as last" one-tap button once you've logged one. A feeding timeline and the upcoming-feeds/calendar controls sit below.
+  - **Nursing timer**: tap **▶ Start nursing timer** on the Feeding card when she latches, **⇄ Switch side** if she swaps, **■ Stop & log feeding** when done — it fills in the duration and the exact start time for you, so there's nothing to estimate or type.
+  - **Pumping timer**: same idea on the Pumping card — **▶ Start pumping timer**, then **■ Stop & log pumping** fills in the duration and opens the sheet so you can add how much came out.
+  - **Pumping**: sessions with duration and total (optionally left/right), 24-hour totals, a 7-day **breast milk & formula vs. what she needs** chart (what she actually took in each day, split by source, against her typical daily need — logging a pump session alone never counts here, only what's marked fed), and below that a 7-day **daily pumping output** chart (just what came out of the pump, day by day — pure supply, unrelated to feeding). The full feed log and pumping session list are further down, tucked behind a **Feed log** / **Pumping sessions** toggle so the charts stay up front.
 - **Journal**: one-tap "how is she doing", notes and tags, a dedicated **⚖️ Log weight** button, a weight-trend chart, and length, head size and temperature (US or metric).
 - Tap any entry (or its ✎) to edit its time, details and unit.
 - Volume units default to mL for the first 2 weeks, then oz. Change that in ⚙ Settings.
@@ -67,16 +73,17 @@ There's no diaper tracking. In the Sheet these are the `Log`, `Pumping` and `Jou
 tabs. Amounts are always stored in mL (weights in g, lengths in cm, temperatures in
 °C); each row also records the unit it was entered in.
 
-### Feeding and pumping stay in sync
-The Pump / Feed tab exists to track milk production and frequency, not just sessions
-on an actual pump — so:
-- **Breastfeeding with a logged duration also creates a matching entry on Pump / Feed**
+### Feeding and pumping stay in sync — without being the same thing
+Pumping milk isn't the same event as feeding it to her, so they're tracked separately
+and only linked when that's actually true:
+- **Breastfeeding with a logged duration also creates a matching entry on Pumping**
   (marked "fed" at that same moment). Change the duration later and that entry updates;
   clear it and the entry is removed. This is what the nursing timer feeds into.
 - **A pumping session has its own independent "Fed to baby?" yes/no and time**, separate
-  from when it was pumped. Log the session, store it, and come back later — even the
+  from when it was pumped, and it defaults to "Not yet" — logging a pump session never
+  counts as a feed on its own. Log the session, store it, and come back later — even the
   next day — to mark it fed at the real time; that creates (or updates) a matching feed
-  entry on Track. Unmarking it removes that feed entry again.
+  entry on Feeding. Unmarking it removes that feed entry again.
 - Either side can be deleted from its own tab, and its mirrored entry goes with it.
 
 ## Using it
@@ -90,19 +97,45 @@ Opening one of these (in Safari, or via a Shortcut) does it immediately:
 
 - `…/#quick=timer-start` — starts the nursing timer
 - `…/#quick=timer-stop` — stops it and logs the feed right away (with an Undo toast)
+- `…/#quick=pump-timer-start` — starts the pumping timer
+- `…/#quick=pump-timer-stop` — stops it and logs the session right away (with an Undo toast)
 - `…/#quick=feed-repeat` — logs "Same as last", identical to tapping that button
+- `…/#quick=feed-custom&src=…&ago=…&min=…&amt=…` — logs a feed with values you supply, for
+  when it's *not* the same as last. `src` is `breast`, `formula` or `pumped` (matched loosely,
+  so dictated text like "pumped milk" still works, and anything unclear defaults to formula —
+  there's always an Undo toast if Siri mishears you); `ago` is minutes before now it started;
+  `min` is nursing minutes (for breast); `amt` is the amount in mL (for formula/pumped).
 
-**To wire up "Hey Siri, start nursing":**
+**To wire up "Hey Siri, start nursing" (or stop-nursing / start-pumping / stop-pumping / same-as-last):**
 1. Open the **Shortcuts** app on iPhone → **+** to create a new shortcut.
 2. Add the action **Open URLs**, and set the URL to your site plus the hash, e.g.
    `https://<you>.github.io/<repo>/#quick=timer-start`.
 3. Tap the shortcut's settings (⋯) → **Add to Siri**, and record a phrase like "start nursing."
-4. Repeat for "stop nursing" (`#quick=timer-stop`) and "log a feed" (`#quick=feed-repeat`).
+4. Repeat for the others: "stop nursing" (`#quick=timer-stop`), "start pumping"
+   (`#quick=pump-timer-start`), "stop pumping" (`#quick=pump-timer-stop`), "log a feed"
+   (`#quick=feed-repeat`).
 
-This briefly opens Safari to run the action and shows a confirmation there — it isn't
-fully invisible, but it's two spoken words instead of unlocking the phone and filling in
-a form. It only works on a device that's already connected (step 3 above), since the
-timer and log both need to know whose data they're touching.
+**To wire up "Hey Siri, log a feed" that asks what actually happened**, instead of always
+repeating the last one:
+1. Create a new shortcut, and add **Ask for Input** (Text) — prompt: "What did she have?"
+   — save the answer as a variable, e.g. `What`.
+2. Add **Ask for Input** (Number) — "How many minutes ago did it start?" → save as `Ago`.
+3. Add **Ask for Input** (Number) — "Nursing minutes, or zero" → save as `Min`.
+4. Add **Ask for Input** (Number) — "Amount in milliliters, or zero" → save as `Amt`.
+5. Add **Text**, and build (tap to insert each variable from the blue "+" picker):
+   `https://<you>.github.io/<repo>/#quick=feed-custom&src=What&ago=Ago&min=Min&amt=Amt`
+6. Add **Open URLs**, set to the output of that Text action.
+7. Name it, **Add to Siri** with a phrase like "log a feed."
+
+Siri reads each question aloud and listens for your answer, so the whole thing happens without
+looking at the phone — it just takes four short back-and-forths instead of one word, since Shortcuts
+can't freely parse a single sentence the way a person would. Say "zero" for whichever of
+duration/amount doesn't apply (e.g. amount for a breastfeed).
+
+These briefly open Safari to run the action and show a confirmation there — it isn't fully
+invisible, but it's a few spoken words instead of unlocking the phone and filling in a form.
+They only work on a device that's already connected (step 3 above), since the timer and log
+both need to know whose data they're touching.
 
 ## Changing the backend
 After editing `Code.gs`: **Deploy → Manage deployments → ✎ → Version: New version → Deploy**. The URL stays the same.
