@@ -862,7 +862,8 @@ function downloadIcs() {
 /* ---------- log sheets: smart defaults, chips instead of typing, live tips, edit mode ---------- */
 const chips = (name, opts, sel, type = 'radio') => `<div class="chips">${opts.map(o => `<label><input type="${type}" name="${name}" value="${o[0]}" ${(Array.isArray(sel) ? sel.includes(o[0]) : o[0] === sel) ? 'checked' : ''}><span>${o[2] ? `<i class="swatch" style="background:${o[2]}"></i>` : ''}${o[1]}</span></label>`).join('')}</div>`;
 const localInput = t => { const d = new Date(t - new Date(t).getTimezoneOffset() * M); return d.toISOString().slice(0, 16); };
-const AGO = [['0', 'Just now'], ['5', '5 min'], ['10', '10 min'], ['15', '15 min'], ['30', '30 min'], ['60', '1 h'], ['custom', 'Other…']];
+const AGO = [['0', 'Just now'], ['5', '5 min'], ['10', '10 min'], ['15', '15 min'], ['20', '20 min'], ['25', '25 min'], ['30', '30 min'],
+  ['35', '35 min'], ['40', '40 min'], ['45', '45 min'], ['50', '50 min'], ['55', '55 min'], ['60', '1 h'], ['custom', 'Other…']];
 // name/label let a form carry a second, independent time field (the pump sheet's "fed at" time
 // alongside its own "when pumped" time) without colliding with the first.
 const whenField = (now, editT, name = 'when', label = 'When') => editT
