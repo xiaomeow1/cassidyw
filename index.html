@@ -584,9 +584,9 @@ function detail(e) {
   }
   if (e.type === 'feed') {
     if (isSimpleFeed(e)) return (e.kind === 'bottle' ? '🍼 Bottle' : '🤱 Breast') + (e.amt ? ` · ${fmtVol(e.amt, e.unit)}` : '');
-    const n = normFeed(e), u = n.unit;
+    const n = normFeed(e), u = n.unit || defaultUnit('feed');
     const parts = String(n.kind).split(',').map(k => {
-      if (k === 'breast') return 'Breast' + (n.sides ? ` (${n.sides.split('').join('+')})` : '') + (n.min ? ` ${n.min} min` : '');
+      if (k === 'breast') return 'Breast' + (n.sides ? ` (${n.sides.split('').join('+')})` : '') + (n.min ? ` ${n.min} min (≈${fmtVol(n.min * BREASTFEED_ML_PER_MIN, u)})` : '');
       if (k === 'formula') return 'Formula' + (n.fMl ? ` ${fmtVol(n.fMl, u)}` : '');
       if (k === 'pumped') return 'Pumped' + (n.pMl ? ` ${fmtVol(n.pMl, u)}` : '');
       return k;
@@ -746,6 +746,15 @@ const dailyRange = d => { const r = bottleRange(d); return [r[0] * 8, r[1] * 12]
 // Actual milk transferred while nursing isn't measurable at home, so production estimates it from
 // logged duration at a flat rate. A session with no duration logged can't be estimated this way.
 const BREASTFEED_ML_PER_MIN = 2;
+// Combines a measured bottle amount with an estimated breastfeeding contribution (2 mL per logged
+// nursing minute) into one "how much she took in" figure for a feed entry. Returns undefined when
+// there's nothing to go on at all — no amount and no duration — so that case can be called out
+// separately rather than silently counted as zero.
+function estimatedFeedMl(e) {
+  const v = feedView(e), n = normFeed(e);
+  const breastMl = (v.src === 'breast' || v.src === 'mixed') && n.min ? n.min * BREASTFEED_ML_PER_MIN : 0;
+  return (v.amt || 0) + breastMl || undefined;
+}
 function renderIntakeMeter(d, totalMl, u, unmeasured) {
   const el = $('#intakeMeter');
   el.hidden = !totalMl;
@@ -755,7 +764,7 @@ function renderIntakeMeter(d, totalMl, u, unmeasured) {
   const ok = totalMl >= lo;
   el.innerHTML = `<div class="k">Today's intake vs. typical for day ${d}</div>
     <div class="meter" role="img" aria-label="${fmtVol(totalMl, u)} logged against a typical range of ${volRange(lo, hi, u)}"><div class="band" style="left:${bandLeft}%;width:${bandW}%"></div><div class="fill ${ok ? 'ok' : 'low'}" style="width:${fillW}%"></div></div>
-    <div class="fine" style="margin-top:6px">${fmtVol(totalMl, u)} logged · typical for day ${d} is ${volRange(lo, hi, u)}${unmeasured ? ` · ${unmeasured} feed${unmeasured === 1 ? '' : 's'} with no amount, not included` : ''}.</div>`;
+    <div class="fine" style="margin-top:6px">${fmtVol(totalMl, u)} logged · typical for day ${d} is ${volRange(lo, hi, u)}${unmeasured ? ` · ${unmeasured} feed${unmeasured === 1 ? '' : 's'} with no amount or duration, not included` : ''}.</div>`;
 }
 function renderTiles(now) {
   const d = dayOfLife(now);
@@ -763,10 +772,10 @@ function renderTiles(now) {
   const { feeds } = counts24(now);
   const tile = (k, v, goal, ok) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">goal ${goal}</div><div class="st ${ok ? 'ok' : 'low'}">${ok ? '✓ On track' : 'Below goal so far'}</div></div>`;
   const spits = recent.filter(l => l.type === 'note' && l.kind !== 'other'), ml = spits.reduce((a, l) => a + (l.amt || 0), 0);
-  const bu = defaultUnit('feed'), feedsToday = recent.filter(l => l.type === 'feed').map(feedView);
-  const amounts = feedsToday.filter(v => v.amt), unmeasured = feedsToday.length - amounts.length;
-  const totalMl = amounts.reduce((a, v) => a + v.amt, 0);
-  const amtLine = totalMl ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Amount logged: ${fmtVol(totalMl, bu)} across ${amounts.length} feed${amounts.length === 1 ? '' : 's'}${unmeasured ? ` (${unmeasured} more without an amount)` : ''}.</div>` : '';
+  const bu = defaultUnit('feed'), feedsToday = recent.filter(l => l.type === 'feed');
+  const estimates = feedsToday.map(estimatedFeedMl), counted = estimates.filter(x => x != null), unmeasured = feedsToday.length - counted.length;
+  const totalMl = counted.reduce((a, x) => a + x, 0);
+  const amtLine = totalMl ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Amount logged: ${fmtVol(totalMl, bu)} across ${counted.length} feed${counted.length === 1 ? '' : 's'}${unmeasured ? ` (${unmeasured} more without an amount or duration)` : ''}.</div>` : '';
   const extra = amtLine + (spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${fmtVol(ml, defaultUnit('note'))} lost` : ''}</div>` : '');
   $('#tiles').innerHTML = extra + tile('Feedings', feeds, '8–12', feeds >= 8);
   renderIntakeMeter(d, totalMl, bu, unmeasured);
@@ -1202,10 +1211,11 @@ function renderPump(now) {
     : 'On track. About 8 sessions in 24 hours, including one overnight, helps build supply in the early weeks.';
   heroCard('#pumpCard', 'pump-c', 'Pumping', all, iv, `<button class="logbtn pump-c" data-log="pump">🥛 Log pumping session</button>`, tip, ['Pumping tips', TIPS.pump]);
   const rec = all.filter(l => now - l.t < 24 * H), total = rec.reduce((a, l) => a + (l.amt || 0), 0);
-  const feeds24 = state.logs.filter(l => l.type === 'feed' && now - l.t < 24 * H).map(feedView);
+  const feeds24 = state.logs.filter(l => l.type === 'feed' && now - l.t < 24 * H);
   const tile = (k, v, g) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">${g}</div></div>`;
   $('#pumpTiles').innerHTML = tile('Feedings', feeds24.length, 'goal 8–12') + tile('Pump sessions', rec.length, 'goal about 8') + tile('Pumped', total ? round1(fromMl(total, u)) : 0, unitName(u));
-  const breastN = feeds24.filter(v => v.src === 'breast' || v.src === 'mixed').length, fedMl = feeds24.reduce((a, v) => a + (v.amt || 0), 0);
+  const breastN = feeds24.filter(l => { const s = feedView(l).src; return s === 'breast' || s === 'mixed'; }).length;
+  const fedMl = feeds24.reduce((a, l) => a + (estimatedFeedMl(l) || 0), 0);
   const lines = [`Feedings: ${feeds24.length} (${breastN} breast, ${feeds24.length - breastN} bottle).`, fedMl ? `Amount logged: ${fmtVol(fedMl, u)}.` : 'No amounts logged yet.'];
   // next feed and next pump, side by side
   const nx = (cls, label, list, iv) => {
