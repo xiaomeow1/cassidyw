@@ -76,9 +76,12 @@ tabs. Amounts are always stored in mL (weights in g, lengths in cm, temperatures
 ### Feeding and pumping stay in sync — without being the same thing
 Pumping milk isn't the same event as feeding it to her, so they're tracked separately
 and only linked when that's actually true:
-- **Breastfeeding with a logged duration also creates a matching entry on Pumping**
-  (marked "fed" at that same moment). Change the duration later and that entry updates;
-  clear it and the entry is removed. This is what the nursing timer feeds into.
+- **Breastfeeding with a logged duration shifts "next pump" timing on Pumping**, so the
+  prediction and calendar reminder account for it — but it's timing-only. It never shows up
+  as a session in the Pumping card, tiles, sessions log or daily-output chart, and it never
+  adds any mL: pumping and feeding stay separate events, only the schedule reacts to both.
+  Change the duration later and the timing updates; clear it and it stops counting. This is
+  what the nursing timer feeds into.
 - **A pumping session has its own independent "Fed to baby?" yes/no and time**, separate
   from when it was pumped, and it defaults to "Not yet" — logging a pump session never
   counts as a feed on its own. Log the session, store it, and come back later — even the

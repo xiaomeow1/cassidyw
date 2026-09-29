@@ -613,6 +613,7 @@ const statusOf = k => STATUS.find(x => x[0] === k);
 function detail(e) {
   if (e.type === 'note') return kindName(NOTE_KINDS, e.kind) + (e.amt ? ` · ${fmtVol(e.amt, e.unit)}` : '');
   if (e.type === 'pump') {
+    if (e.note === AUTO_PUMP_NOTE) return `🤱 Breastfed ${e.dur ? `${e.dur} min ` : ''}· counts toward next pump, not a session`;
     const st = STORE.find(x => x[0] === e.store);
     const fedTxt = e.fedAt ? `Fed ${fmtT(e.fedAt)}` : e.store === 'fed' ? 'Fed' : null;
     return [e.dur ? `${e.dur} min` : null, e.amt ? `${fmtVol(e.amt, e.unit)} total` : null, e.lMl || e.rMl ? `L ${fmtVol(e.lMl || 0, e.unit)} · R ${fmtVol(e.rMl || 0, e.unit)}` : null, st && st[0] !== 'fed' ? st[1] : null, fedTxt].filter(Boolean).join(' · ') || 'Pumping session';
@@ -701,7 +702,7 @@ function syncFeedPumpEcho(entry, ed) {
   const prevId = ed?.pumpEchoId, prev = prevId ? state.logs.find(l => l.id === prevId) : null;
   const wants = String(entry.kind).split(',').includes('breast') && entry.min;
   if (wants) {
-    const echo = { id: prevId || uid(), type: 'pump', t: entry.t, dur: entry.min, fedAt: entry.t, feedId: entry.id, note: 'Breastfed (auto-logged)' };
+    const echo = { id: prevId || uid(), type: 'pump', t: entry.t, dur: entry.min, fedAt: entry.t, feedId: entry.id, note: AUTO_PUMP_NOTE };
     entry.pumpEchoId = echo.id;
     return { op: prevId ? { op: 'update', entry: echo } : { op: 'add', entry: echo },
       undo: prev ? () => op({ op: 'update', entry: prev }) : () => op({ op: 'delete', id: echo.id }) };
@@ -833,6 +834,11 @@ const dailyRange = d => { const r = bottleRange(d); return [r[0] * 8, r[1] * 12]
 // Actual milk transferred while nursing isn't measurable at home, so production estimates it from
 // logged duration at a flat rate. A session with no duration logged can't be estimated this way.
 const BREASTFEED_ML_PER_MIN = 2;
+// Marks a Pumping-tab entry that syncFeedPumpEcho auto-created from a breastfeed, purely so "next
+// pump" timing accounts for it — not an actual pumping session. Anything that shows or counts real
+// pump sessions (tiles, the sessions log, the daily-output chart) should filter these out; anything
+// computing pump *timing* (intervals, projections, calendar slots) should keep using the full list.
+const AUTO_PUMP_NOTE = 'Breastfed (auto-logged)';
 // Combines a measured bottle amount with an estimated breastfeeding contribution (2 mL per logged
 // nursing minute) into one "how much she took in" figure for a feed entry. Returns undefined when
 // there's nothing to go on at all — no amount and no duration — so that case can be called out
@@ -1302,7 +1308,10 @@ $('#sheetForm').addEventListener('submit', e => {
 
 /* ---------- pumping tab ---------- */
 function renderPump(now) {
-  const all = byType('pump'), last = all[all.length - 1], u = defaultUnit('pump');
+  // `all` includes breastfeed echoes (see AUTO_PUMP_NOTE) so timing — iv/projection/pfNext/calendar
+  // slots — correctly shifts "next pump" after a breastfeed. `realPumps` excludes them for anything
+  // that counts or lists actual pumping: tiles, the sessions log, the daily-output chart.
+  const all = byType('pump'), realPumps = all.filter(l => l.note !== AUTO_PUMP_NOTE), last = all[all.length - 1], u = defaultUnit('pump');
   const iv = pumpInterval(), since = last ? now - last.t : 0;
   const tip = !last ? 'Early on, aim for about 8 sessions in 24 hours, including one overnight. Log your first session to start the reminders.'
     : since > 4 * H ? `It has been ${dur(since)}. Try to pump at least every 3–4 hours in the early weeks.`
@@ -1316,7 +1325,7 @@ function renderPump(now) {
       </div>`
     : `<button class="logbtn pump-c" data-log="pump">🥛 Log pumping session</button><button type="button" class="btn wide2" data-ptimer="start">▶ Start pumping timer</button>`;
   heroCard('#pumpCard', 'pump-c', 'Pumping', all, iv, pumpActions, tip, ['Pumping tips', TIPS.pump]);
-  const rec = all.filter(l => now - l.t < 24 * H), total = rec.reduce((a, l) => a + (l.amt || 0), 0);
+  const rec = realPumps.filter(l => now - l.t < 24 * H), total = rec.reduce((a, l) => a + (l.amt || 0), 0);
   const feeds24 = state.logs.filter(l => l.type === 'feed' && now - l.t < 24 * H);
   const tile = (k, v, g) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">${g}</div></div>`;
   $('#pumpTiles').innerHTML = tile('Feedings', feeds24.length, 'goal 8–12') + tile('Pump sessions', rec.length, 'goal about 8') + tile('Pumped', total ? round1(fromMl(total, u)) : 0, unitName(u));
@@ -1366,7 +1375,7 @@ function renderPump(now) {
   // Daily pumping output: just what actually came out of the pump, no comparison to need.
   const pumpRows = days.map(dt => {
     const t0 = dt.getTime(), t1 = t0 + 24 * H;
-    const dayPumps = all.filter(l => l.t >= t0 && l.t < t1);
+    const dayPumps = realPumps.filter(l => l.t >= t0 && l.t < t1);
     return { dt, pumpedMl: dayPumps.reduce((a, l) => a + (l.amt || 0), 0), n: dayPumps.length };
   });
   const pumpScale = Math.max(1, ...pumpRows.map(r => r.pumpedMl));
@@ -1380,7 +1389,7 @@ function renderPump(now) {
   $('#pumpOutNote').textContent = weekTotal
     ? `${fmtVol(weekTotal, u)} pumped over the last 7 days, averaging ${fmtVol(Math.round(weekTotal / 7), u)}/day.`
     : 'Log a pumping session to see daily output here.';
-  $('#pumpLog').innerHTML = entryRows([...all].sort((a, b) => b.t - a.t).slice(0, 40), 'No pumping sessions yet. Tap “Log pumping session”.');
+  $('#pumpLog').innerHTML = entryRows([...realPumps].sort((a, b) => b.t - a.t).slice(0, 40), 'No pumping sessions yet. Tap “Log pumping session”.');
 }
 
 /* ---------- journal tab ---------- */
