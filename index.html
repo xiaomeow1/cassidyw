@@ -272,6 +272,19 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   <div class="card tracker" id="pfNext" style="margin-bottom:12px"></div>
   <div class="card tracker" id="timersCard" style="margin-bottom:12px"></div>
 
+  <form class="card tracker" id="quickEntryForm" style="margin-bottom:12px">
+    <div class="head"><i class="dot feed-c"></i>Type or say it</div>
+    <div class="field">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <input type="text" name="q" id="quickEntryInput" placeholder="&quot;pumped 90ml for 15 min&quot; or &quot;breastfed 12 min left side&quot;" style="flex:1;width:100%" autocomplete="off">
+        <button type="button" id="quickEntryMic" class="btn" hidden aria-label="Dictate">🎤</button>
+      </div>
+      <p class="fine" style="margin-top:6px">Mentioning "pumped", "breastfed"/"nursed" or "formula" tells it what to log, plus an amount (mL/oz) or a duration in minutes. On iPhone, the keyboard's own microphone dictates into the box.</p>
+    </div>
+    <p class="ferr" id="quickEntryErr" hidden></p>
+    <button type="submit" class="logbtn" style="background:var(--accent)">Log it</button>
+  </form>
+
   <div class="pfGrid">
     <div class="pfCol feed">
       <div class="pfColHead"><i class="dot feed-c"></i>Feeding</div>
@@ -781,6 +794,69 @@ function logFeedFromQuick(h) {
   op({ op: 'add', entry });
   if (sync) op(sync.op);
   toast(`Logged via Siri: ${detail(entry)}`, 8000, { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (sync) sync.undo(); } });
+}
+
+// Free-text/dictated quick entry: pulls amount, duration, "how long ago", side and "fed to baby"
+// out of a plain sentence, so logging doesn't have to mean tapping through chips. Deliberately
+// conservative — it only trusts numbers that carry an explicit unit ("90ml", "15 min"), never a
+// bare number, since a wrong tap is easy to undo but a wrong guess from a misheard word is not.
+function parseQuickEntry(raw) {
+  let t = ' ' + String(raw).toLowerCase().trim() + ' ';
+  let ago = 0;
+  const agoM = t.match(/(\d+(?:\.\d+)?)\s*(?:min(?:ute)?s?)\s*ago/);
+  if (agoM) { ago = parseFloat(agoM[1]); t = t.replace(agoM[0], ' '); }
+  else if (/\bhalf an hour ago\b/.test(t)) { ago = 30; t = t.replace(/half an hour ago/, ' '); }
+  else if (/\ban? hour ago\b/.test(t)) { ago = 60; t = t.replace(/an? hour ago/, ' '); }
+
+  const amtM = t.match(/(\d+(?:\.\d+)?)\s*(ml|milliliters?|oz|ounces?)\b/);
+  let amt, unit;
+  if (amtM) { amt = parseFloat(amtM[1]); unit = /^oz|ounce/.test(amtM[2]) ? 'oz' : 'ml'; t = t.replace(amtM[0], ' '); }
+
+  const minM = t.match(/(\d+(?:\.\d+)?)\s*min(?:ute)?s?\b/);
+  const min = minM ? parseFloat(minM[1]) : undefined;
+
+  const side = /\bboth( sides)?\b|\bleft (?:and|&|\+) right\b/.test(t) ? 'LR' : /\bleft\b/.test(t) ? 'L' : /\bright\b/.test(t) ? 'R' : undefined;
+  const fed = /\bfed\b|\bgave (?:it|her)\b|\bto baby\b/.test(t);
+  const isPump = /\bpump/.test(t), isBreast = /\bbreast|\bnurs/.test(t), isFormula = /\bformula\b/.test(t), isBottle = /\bbottle\b/.test(t);
+  return { ago, amt, unit, min, side, fed, isPump, isBreast, isFormula, isBottle };
+}
+// Turns a parsed sentence into a ready-to-save entry, or an { error } explaining what's missing —
+// mirrors what BUILDERS.feed/pump's own collect() requires, so a text entry is never less valid
+// than one built from the chips.
+function quickEntryFromText(raw) {
+  const p = parseQuickEntry(raw);
+  const t = Date.now() - p.ago * M;
+  if (p.isPump) {
+    if (p.amt == null && p.min == null) return { error: 'Couldn’t find an amount or a duration — try "pumped 90ml for 15 min".' };
+    const entry = { id: uid(), type: 'pump', t };
+    if (p.min != null) entry.dur = p.min;
+    if (p.amt != null) { entry.amt = toMl(p.amt, p.unit); entry.unit = p.unit; }
+    if (p.fed) { entry.fed = true; entry.fedAt = t; }
+    return { type: 'pump', entry };
+  }
+  if (p.isBreast) {
+    const entry = { id: uid(), type: 'feed', t, kind: 'breast', sides: p.side || lastBreastSide() };
+    if (p.min != null) entry.min = p.min;
+    return { type: 'feed', entry };
+  }
+  if (p.isFormula || p.isBottle) {
+    if (p.amt == null) return { error: 'Couldn’t find an amount — try "formula 60ml".' };
+    const ml = toMl(p.amt, p.unit);
+    return { type: 'feed', entry: { id: uid(), type: 'feed', t, kind: 'formula', fMl: ml, amt: ml, unit: p.unit } };
+  }
+  return { error: 'Couldn’t tell if that was a feed or a pump — try starting with "pumped", "breastfed" or "formula".' };
+}
+function submitQuickEntry(text) {
+  const res = quickEntryFromText(text);
+  if (res.error) return res;
+  const { type, entry } = res;
+  const sync = type === 'pump' ? syncPumpFeedLink(entry, null) : syncFeedPumpEcho(entry, null);
+  op({ op: 'add', entry });
+  if (sync) op(sync.op);
+  const fl = flagFor(entry);
+  toast(fl ? fl.msg : `Logged from text: ${detail(entry)}${syncTag(type, sync, false)}`, fl ? 8000 : 7000,
+    { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (sync) sync.undo(); } });
+  return res;
 }
 setInterval(() => { if (timer) { const el = $('#timerClock'); if (el) el.textContent = fmtElapsed(Date.now() - timer.startedAt); } }, 1000);
 
@@ -1594,6 +1670,33 @@ document.addEventListener('click', e => {
 $('#feedInt').addEventListener('change', e => op({ op: 'settings', settings: { feedInterval: e.target.value } }));
 $('#icsBtn').addEventListener('click', downloadIcs);
 window.addEventListener('resize', () => renderTimeline(Date.now()));
+
+$('#quickEntryForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const input = $('#quickEntryInput'), errEl = $('#quickEntryErr'), text = input.value.trim();
+  errEl.hidden = true;
+  if (!text) return;
+  const res = submitQuickEntry(text);
+  if (res.error) { errEl.textContent = res.error; errEl.hidden = false; return; }
+  input.value = '';
+});
+// Dictation: iOS/Android keyboards already offer a mic on any text input with no code needed, but
+// desktop Chrome and Android Chrome also support tap-to-talk via the Web Speech API — offer that
+// as a bonus button where it exists (notably not in iOS/macOS Safari, which never shipped it).
+(function setupQuickEntryMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  const btn = $('#quickEntryMic'), input = $('#quickEntryInput');
+  btn.hidden = false;
+  const rec = new SR();
+  rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
+  let listening = false;
+  const setListening = v => { listening = v; btn.textContent = v ? '⏺' : '🎤'; btn.setAttribute('aria-label', v ? 'Stop dictation' : 'Dictate'); };
+  btn.addEventListener('click', () => { if (listening) rec.stop(); else { rec.start(); setListening(true); } });
+  rec.onresult = e => { input.value = e.results[0][0].transcript; };
+  rec.onend = () => setListening(false);
+  rec.onerror = () => setListening(false);
+})();
 
 /* ---------- tabs ---------- */
 // "track" shows Feeding and Pumping together, one continuous page instead of a tab switch between them.
