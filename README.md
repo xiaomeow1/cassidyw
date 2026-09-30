@@ -61,11 +61,12 @@ from Google Calendar → Settings → Share.)
 - **Feed & Pump**: feeding and pumping side by side (two columns on a wide screen,
   stacked but clearly separate on a phone) — they're never blended into one card,
   since pumping milk doesn't mean it's been fed yet.
-  - **Feeding**: log a feed by picking any mix of breast, formula and pumped milk, each with its own amount (mL/oz, in 5 mL steps) — breast also gets minutes and a side. Tap "＋ Spit-up or note", and see a "Same as last" one-tap button once you've logged one. A feeding timeline and the upcoming-feeds/calendar controls sit below.
-  - **Timers**: one shared **Timers** card, right below the next-feed/next-pump summary, holds both — **▶ Start nursing timer** when she latches, **⇄ Switch side** if she swaps, **■ Stop & log feeding** when done; **▶ Start pumping timer** the same way, then **■ Stop & log pumping** fills in the duration and opens the sheet so you can add how much came out. Both can run at once, and each fills in the exact duration and start time for you, so there's nothing to estimate or type.
-  - **Pumping**: sessions with duration and total (optionally left/right), 24-hour totals, a 7-day **breast milk & formula vs. what she needs** chart (what she actually took in each day, split by source, against her typical daily need — logging a pump session alone never counts here, only what's marked fed), and below that a 7-day **daily pumping output** chart (just what came out of the pump, day by day — pure supply, unrelated to feeding). The full feed log and pumping session list are further down, tucked behind a **Feed log** / **Pumping sessions** toggle so the charts stay up front.
+  - **Feeding**: the fields are right there on the card, not behind a button — pick any mix of breast, formula and pumped milk, each with its own amount (mL/oz, in 5 mL steps) and breast's minutes and side, then **🍼 Log feeding**. Advice inline (typical amount, timing) adjusts to her day of life. A "Same as last" one-tap button sits above it once you've logged one; tap "＋ Spit-up or note" for that. A feeding timeline and the upcoming-feeds/calendar controls sit below.
+  - **Timers**: one shared **Timers** card, right below the next-feed/next-pump summary, holds both — **▶ Start nursing timer** when she latches, **⇄ Switch side** if she swaps, **■ Stop & log feeding** when done; **▶ Start pumping timer** the same way, then **■ Stop & log pumping** fills in the duration and opens a form so you can add how much came out. Both can run at once, and each fills in the exact duration and start time for you, so there's nothing to estimate or type. The matching card's inline fields hide themselves while its timer is running.
+  - **Pumping**: the duration/amount/left-right/fed-to-baby fields are right on the card too — fill in and **🥛 Log pumping session**, no button to open first. Below that: 24-hour totals, a 7-day **breast milk & formula vs. what she needs** chart (what she actually took in each day, split by source, against her typical daily need — logging a pump session alone never counts here, only what's marked fed), and a 7-day **daily pumping output** chart (just what came out of the pump, day by day — pure supply, unrelated to feeding).
+  - **Recent activity**: feeds, pumping sessions and notes combined into one chronological list (no more separate, toggled Feed log / Pumping sessions), showing the last 10. The sleep-safety guide sits just above it.
 - **Journal**: one-tap "how is she doing", notes and tags, a dedicated **⚖️ Log weight** button, a weight-trend chart, and length, head size and temperature (US or metric).
-- Tap any entry (or its ✎) to edit its time, details and unit.
+- Tap any entry (or its ✎) to edit its time, details and unit — that still opens a form of its own, separate from the inline logger.
 - Volume units default to mL for the first 2 weeks, then oz. Change that in ⚙ Settings.
 
 There's no diaper tracking. In the Sheet these are the `Log`, `Pumping` and `Journal`
@@ -77,7 +78,7 @@ Pumping milk isn't the same event as feeding it to her, so they're tracked separ
 and only linked when that's actually true:
 - **Breastfeeding with a logged duration shifts "next pump" timing on Pumping**, so the
   prediction and calendar reminder account for it — but it's timing-only. It never shows up
-  as a session in the Pumping card, tiles, sessions log or daily-output chart, and it never
+  as a session in the Pumping card, tiles, Recent activity or the daily-output chart, and it never
   adds any mL: pumping and feeding stay separate events, only the schedule reacts to both.
   Change the duration later and the timing updates; clear it and it stops counting. This is
   what the nursing timer feeds into.

@@ -276,6 +276,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
     <div class="pfCol feed">
       <div class="pfColHead"><i class="dot feed-c"></i>Feeding</div>
       <div class="card tracker" id="feedCard"></div>
+      <form class="card" id="feedLoggerForm" style="margin-top:12px"></form>
       <button class="btn wide" data-log="note" type="button"><i class="dot note-c"></i>Spit-up or note</button>
       <div class="callout tips" id="now" style="margin-top:12px"></div>
       <section>
@@ -288,6 +289,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
     <div class="view pfCol pump" id="v-pump">
       <div class="pfColHead"><i class="dot pump-c"></i>Pumping</div>
       <div class="card tracker" id="pumpCard"></div>
+      <form class="card" id="pumpLoggerForm" style="margin-top:12px"></form>
       <section><div class="sec-title">Last 24 hours</div><div class="tiles" id="pumpTiles"></div><div class="fine" id="pumpStash" style="margin:8px 2px 0;display:grid;gap:4px"></div></section>
     </div>
   </div>
@@ -339,23 +341,17 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
     </div>
   </section>
 
-  <div class="pfGrid">
-    <div class="pfCol feed">
-      <details class="card more-all"><summary style="cursor:pointer;font-weight:600">Feed log</summary>
-        <ul class="log" id="log" style="margin-top:12px"></ul></details>
-    </div>
-    <div class="pfCol pump">
-      <details class="card more-all"><summary style="cursor:pointer;font-weight:600">Pumping sessions</summary>
-        <ul class="log" id="pumpLog" style="margin-top:12px"></ul></details>
-    </div>
-  </div>
-
   <section>
     <details class="card more-all">
       <summary style="cursor:pointer;font-weight:600">Sleep, safe sleep &amp; when to call the pediatrician</summary>
       <div class="tips" id="moreGuide" style="margin-top:12px"></div>
       <p class="fine">General guidance in line with AAP, CDC and NHS newborn advice. It's a reference, not medical advice. Your pediatrician and lactation consultant know her best.</p>
     </details>
+  </section>
+
+  <section>
+    <div class="sec-title">Recent activity</div>
+    <div class="card"><ul class="log" id="combinedLog"></ul></div>
   </section>
   </div>
   <div class="view" id="v-journal" hidden>
@@ -652,7 +648,11 @@ function render() {
   renderTiles(now);
   renderTimeline(now);
   renderSchedule(now);
-  renderLog();
+  renderCombinedLog();
+  refreshInlineLoggerIfStale('feed');
+  refreshInlineLoggerIfStale('pump');
+  $('#feedLoggerForm').hidden = !!timer;
+  $('#pumpLoggerForm').hidden = !!pumpTimer;
   $('#feedInt').value = String(state.settings.feedInterval ?? 'auto');
   renderNow(d);
   $('#moreGuide').innerHTML = TIPS.rhythm + TIPS.call;
@@ -813,8 +813,8 @@ function renderHero() {
   const feedActions = timer
     ? `<p class="fine" style="margin:4px 2px">⏱ Nursing timer running — see Timers above.</p>`
     : rep
-      ? `<button class="logbtn feed-c" data-quick="feed-repeat">↻ Same as last<small>${esc(detail(rep))}</small></button><button class="btn wide2" data-log="feed">Change or log something different…</button>`
-      : `<button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button>`;
+      ? `<button class="logbtn feed-c" data-quick="feed-repeat">↻ Same as last<small>${esc(detail(rep))}</small></button>`
+      : '';
   const feedTip = last ? (feedTiming() || 'On rhythm. Feed on cue: rooting, hands to mouth or lip-smacking come before crying.') : 'Newborns feed 8–12 times a day, about every 2–3 hours. Log the first one to start the predictions.';
   heroCard('#feedCard', 'feed-c', 'Feeding', byType('feed'), feedInterval(), feedActions, feedTip, ['Feeding tips', TIPS.feeding]);
 }
@@ -952,9 +952,13 @@ function entryRows(items, empty) {
       <button class="ed" data-edit="${l.id}" aria-label="Edit entry">✎</button></li>`;
   }).join('') : `<li class="empty">${empty}</li>`;
 }
-function renderLog() {
-  const items = state.logs.filter(l => l.type === 'feed' || l.type === 'note').sort((a, b) => b.t - a.t).slice(0, 40);
-  $('#log').innerHTML = entryRows(items, 'No entries yet. Tap “Log feeding” above.');
+// Feeding and pumping used to be two separately-toggled lists; combined into one recent-activity
+// feed (feeds, notes and real pump sessions — not the breastfeed timing echoes) so there's one place
+// to look, capped to the last 10 so it stays a quick glance rather than a full history.
+function renderCombinedLog() {
+  const items = state.logs.filter(l => l.type === 'feed' || l.type === 'note' || (l.type === 'pump' && l.note !== AUTO_PUMP_NOTE))
+    .sort((a, b) => b.t - a.t).slice(0, 10);
+  $('#combinedLog').innerHTML = entryRows(items, 'No entries yet — log a feed or a pumping session above.');
 }
 
 function renderMode() {
@@ -1008,7 +1012,7 @@ const whenField = (now, editT, name = 'when', label = 'When') => editT
 const noteField = (ph, v = '') => `<details class="addnote" ${v ? 'open' : ''}><summary>＋ Add a note</summary><input type="text" name="note" value="${esc(v)}" placeholder="${ph}" style="width:100%"></details>`;
 // o = { ml: 10 } steps a volume (10 mL, or 0.5 oz in oz); o = { fix: 5 } is a plain step.
 const stepper = (name, val, o) => { const at = o.ml ? `data-stepml="${o.ml}"` : `data-stepfix="${o.fix}"`; return `<div class="step"><button type="button" class="btn" data-for="${name}" data-dir="-1" ${at} aria-label="Less">−</button><input type="number" name="${name}" id="${name}" min="0" step="any" inputmode="decimal" value="${val ?? ''}"><button type="button" class="btn" data-for="${name}" data-dir="1" ${at} aria-label="More">+</button></div>`; };
-const unitField = u => `<div class="field" id="secUnit"><label class="l">Unit</label>${chips('unit', [['ml', 'mL'], ['oz', 'oz']], u)}</div>`;
+const unitField = u => `<div class="field secUnit"><label class="l">Unit</label>${chips('unit', [['ml', 'mL'], ['oz', 'oz']], u)}</div>`;
 const ctxHtml = list => list.map(x => `<div class="ctx ${x.level}">${x.text}</div>`).join('');
 const actionsHtml = isEdit => `<div class="actions">${isEdit ? '<button class="btn danger" value="delete" formnovalidate>Delete</button>' : ''}<button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary" value="save">Save</button></div>`;
 function readWhen(f, name = 'when') {
@@ -1040,27 +1044,28 @@ const BUILDERS = {
     const atFinal = timerData ? timerData.t : at;
     return {
       title: '🍼 Log feeding', vol: ['fMl', 'pMl'], canon: { fMl: src?.fMl, pMl: src?.pMl },
-      body: `<div class="field"><label class="l">What did she have? (pick all that apply)</label>${chips('parts', FEED_PARTS, parts, 'checkbox')}<div id="ctxTiming"></div></div>
-        <div class="field" id="secBreast"><label class="l">Breast side(s)</label>${chips('sides', SIDES, sides, 'checkbox')}
-          <label class="l" style="margin-top:12px">Minutes (optional)</label>${chips('min', [['', 'Skip'], ...mins.map(m => [m, m])], minVal ? String(minVal) : '')}<div id="ctxBreast"></div></div>
+      body: `<div class="field"><label class="l">What did she have? (pick all that apply)</label>${chips('parts', FEED_PARTS, parts, 'checkbox')}<div class="ctxTiming"></div></div>
+        <div class="field secBreast"><label class="l">Breast side(s)</label>${chips('sides', SIDES, sides, 'checkbox')}
+          <label class="l" style="margin-top:12px">Minutes (optional)</label>${chips('min', [['', 'Skip'], ...mins.map(m => [m, m])], minVal ? String(minVal) : '')}<div class="ctxBreast"></div></div>
         ${unitField(unit)}
-        <div class="field" id="secFormula"><label class="l">Formula</label>${stepper('fMl', fv, { ml: 5 })}<div id="ctxFormula"></div></div>
-        <div class="field" id="secPumped"><label class="l">Pumped milk</label>${stepper('pMl', pv, { ml: 5 })}<div id="ctxPumped"></div></div>
-        <div class="callout" id="bottleTotal" style="margin:0"></div>
+        <div class="field secFormula"><label class="l">Formula</label>${stepper('fMl', fv, { ml: 5 })}<div class="ctxFormula"></div></div>
+        <div class="field secPumped"><label class="l">Pumped milk</label>${stepper('pMl', pv, { ml: 5 })}<div class="ctxPumped"></div></div>
+        <div class="callout bottleTotal" style="margin:0"></div>
         ${whenField(atFinal, (ed || timerData) && atFinal)}${noteField('latched well, sleepy…', ed?.note)}`,
       update(f) {
         const on = k => f.querySelector(`input[name=parts][value=${k}]`).checked, u = f.elements.unit.value;
-        $('#secBreast').hidden = !on('breast'); $('#secFormula').hidden = !on('formula'); $('#secPumped').hidden = !on('pumped');
-        $('#secUnit').hidden = !(on('formula') || on('pumped'));
+        f.querySelector('.secBreast').hidden = !on('breast'); f.querySelector('.secFormula').hidden = !on('formula'); f.querySelector('.secPumped').hidden = !on('pumped');
+        f.querySelector('.secUnit').hidden = !(on('formula') || on('pumped'));
         const fm = on('formula') ? +f.elements.fMl.value || 0 : 0, pm = on('pumped') ? +f.elements.pMl.value || 0 : 0, tot = fm + pm;
-        $('#bottleTotal').hidden = !(on('formula') || on('pumped'));
-        $('#bottleTotal').innerHTML = `<b>Bottle total: ${round1(tot)} ${unitName(u)}</b>Breast isn't counted in the total.` +
+        const bt = f.querySelector('.bottleTotal');
+        bt.hidden = !(on('formula') || on('pumped'));
+        bt.innerHTML = `<b>Bottle total: ${round1(tot)} ${unitName(u)}</b>Breast isn't counted in the total.` +
           (toMl(tot, u) > r[1] * 1.5 ? `<div class="ctx watch">${round1(tot)} ${unitName(u)} is above the usual amount for day ${d}. Bigger volumes can bring more spit-up: offer less and let her ask for more.</div>` : '');
         const timing = ed ? null : feedTiming();
-        $('#ctxTiming').innerHTML = timing ? ctxHtml([{ level: 'ok', text: timing }]) : '';
-        $('#ctxBreast').innerHTML = ctxHtml([{ level: 'ok', text: 'Start on the side she finished on last time. A good latch: wide mouth, lips flanged out, steady swallowing. After a C-section, football hold or side-lying keeps weight off your incision.' + (on('breast') ? ' Logging a duration also updates the Pump / Feed tab, to track how often and how long she nurses — try the ▶ timer on the Feeding card next time to fill this in automatically.' : '') }]);
-        $('#ctxFormula').innerHTML = ctxHtml([{ level: 'ok', text: `Typical on day ${d}: ${volRange(r[0], r[1], u)} per feed. Pace the bottle, stop at fullness cues, toss leftovers after 1 hour.` }]);
-        $('#ctxPumped').innerHTML = ctxHtml([{ level: 'ok', text: 'Room temperature up to 4 h · fridge 4 days · freezer about 6 months. Warm in a bowl of warm water and swirl, don\'t shake.' }]);
+        f.querySelector('.ctxTiming').innerHTML = timing ? ctxHtml([{ level: 'ok', text: timing }]) : '';
+        f.querySelector('.ctxBreast').innerHTML = ctxHtml([{ level: 'ok', text: 'Start on the side she finished on last time. A good latch: wide mouth, lips flanged out, steady swallowing. After a C-section, football hold or side-lying keeps weight off your incision.' + (on('breast') ? ' Logging a duration also updates the Pump / Feed tab, to track how often and how long she nurses — try the ▶ timer on the Feeding card next time to fill this in automatically.' : '') }]);
+        f.querySelector('.ctxFormula').innerHTML = ctxHtml([{ level: 'ok', text: `Typical on day ${d}: ${volRange(r[0], r[1], u)} per feed. Pace the bottle, stop at fullness cues, toss leftovers after 1 hour.` }]);
+        f.querySelector('.ctxPumped').innerHTML = ctxHtml([{ level: 'ok', text: 'Room temperature up to 4 h · fridge 4 days · freezer about 6 months. Warm in a bowl of warm water and swirl, don\'t shake.' }]);
       },
       collect(f, entry) {
         const el = f.elements, u = el.unit.value, parts = [...f.querySelectorAll('input[name=parts]:checked')].map(i => i.value);
@@ -1122,14 +1127,14 @@ const BUILDERS = {
     const fedAtKnown = src.fedAt || (src.store === 'fed' ? src.t : null);
     return {
       title: '🥛 Pumping session', vol: ['tot', 'lMl', 'rMl'], canon: { tot: src.amt, lMl: src.lMl, rMl: src.rMl },
-      body: `<div class="field"><label class="l">Duration, minutes</label>${stepper('dur', src.dur ?? (timerData ? timerData.dur : last?.dur) ?? 15, { fix: 5 })}<div id="ctxDur"></div></div>
+      body: `<div class="field"><label class="l">Duration, minutes</label>${stepper('dur', src.dur ?? (timerData ? timerData.dur : last?.dur) ?? 15, { fix: 5 })}<div class="ctxDur"></div></div>
         ${unitField(unit)}
-        <div class="field"><label class="l">Total pumped</label>${stepper('tot', v(src.amt ?? last?.amt), { ml: 5 })}<div id="ctxVol"></div></div>
+        <div class="field"><label class="l">Total pumped</label>${stepper('tot', v(src.amt ?? last?.amt), { ml: 5 })}<div class="ctxVol"></div></div>
         <details class="addnote" ${src.lMl || src.rMl ? 'open' : ''}><summary>＋ Split by left / right</summary>
           <div class="field"><label class="l">Left</label>${stepper('lMl', v(src.lMl), { ml: 5 })}</div>
           <div class="field"><label class="l">Right</label>${stepper('rMl', v(src.rMl), { ml: 5 })}</div></details>
         <div class="field"><label class="l">Fed to baby?</label>${chips('fed', [['0', 'Not yet'], ['1', 'Yes']], wasFed ? '1' : '0')}
-          <div id="fedWhenWrap" ${wasFed ? '' : 'hidden'} style="margin-top:12px">${whenField(Date.now(), fedAtKnown, 'fedWhen', 'When was she fed?')}</div>
+          <div class="fedWhenWrap" ${wasFed ? '' : 'hidden'} style="margin-top:12px">${whenField(Date.now(), fedAtKnown, 'fedWhen', 'When was she fed?')}</div>
         </div>
         ${whenField(at, ed && at)}${noteField('let-down, comfort, flange size…', ed?.note)}`,
       update(f, ev) {
@@ -1137,9 +1142,9 @@ const BUILDERS = {
         if (tgt === 'lMl' || tgt === 'rMl') f.elements.tot.value = round1((+f.elements.lMl.value || 0) + (+f.elements.rMl.value || 0));
         const ctx = [];
         if (!ed && since > 4 * H) ctx.push({ level: 'watch', text: `It has been ${dur(since)} since the last session. Early on, try to pump at least every 3–4 hours.` });
-        $('#ctxDur').innerHTML = ctxHtml([...ctx, { level: 'ok', text: 'About 15–20 minutes, or until milk has stopped flowing for about 2 minutes. Early on, 8 sessions in 24 hours (including one overnight) helps build supply.' }]);
-        $('#ctxVol').innerHTML = ctxHtml([{ level: 'ok', text: expect(u) }]);
-        $('#fedWhenWrap').hidden = f.elements.fed.value !== '1';
+        f.querySelector('.ctxDur').innerHTML = ctxHtml([...ctx, { level: 'ok', text: 'About 15–20 minutes, or until milk has stopped flowing for about 2 minutes. Early on, 8 sessions in 24 hours (including one overnight) helps build supply.' }]);
+        f.querySelector('.ctxVol').innerHTML = ctxHtml([{ level: 'ok', text: expect(u) }]);
+        f.querySelector('.fedWhenWrap').hidden = f.elements.fed.value !== '1';
       },
       collect(f, entry) {
         const el = f.elements, u = el.unit.value, n = k => parseFloat(el[k].value) || 0;
@@ -1219,12 +1224,9 @@ const BUILDERS = {
 };
 
 let sheetState = null;
-function openSheet(type, opts = {}) {
-  const f = $('#sheetForm'), now = Date.now(), ed = opts.edit || null, at = ed ? ed.t : (opts.timer ? opts.timer.t : now), d = dayOfLife(at);
-  const b = BUILDERS[type](ed, at, d, opts);
-  f.innerHTML = `<h2>${ed ? '✎ Edit · ' : ''}${b.title}</h2>${b.body}<p class="ferr" id="ferr" hidden></p>${actionsHtml(!!ed)}`;
-  sheetState = { type, ed, b };
-  if (b.init) b.init(f);
+// Shared by the edit modal and the inline feed/pump loggers: wires up the unit-switch conversion,
+// the "how long ago" custom-date reveal, and re-running the builder's own update() on any change.
+function wireForm(f, b) {
   Object.entries(b.canon || {}).forEach(([n, ml]) => { if (ml && f.elements[n]) f.elements[n].dataset.ml = ml; });
   let curUnit = f.elements.unit ? f.elements.unit.value : null;
   f.onchange = f.oninput = ev => {
@@ -1236,7 +1238,15 @@ function openSheet(type, opts = {}) {
     }
     b.update(f, ev);
   };
+  if (b.init) b.init(f);
   b.update(f);
+}
+function openSheet(type, opts = {}) {
+  const f = $('#sheetForm'), now = Date.now(), ed = opts.edit || null, at = ed ? ed.t : (opts.timer ? opts.timer.t : now), d = dayOfLife(at);
+  const b = BUILDERS[type](ed, at, d, opts);
+  f.innerHTML = `<h2>${ed ? '✎ Edit · ' : ''}${b.title}</h2>${b.body}<p class="ferr" id="ferr" hidden></p>${actionsHtml(!!ed)}`;
+  sheetState = { type, ed, b };
+  wireForm(f, b);
   $('#sheet').showModal();
 }
 
@@ -1255,9 +1265,12 @@ function repeatFeed() {
 }
 const quickStatus = k => logQuick({ id: uid(), type: 'journal', t: Date.now(), status: k }, `${statusOf(k)[1]} Logged: ${statusOf(k)[2]}`);
 
-$('#sheetForm').addEventListener('click', e => {
+// Delegated from document (not just the modal) so the +/- steppers work in the inline
+// feed/pump loggers too, not only the edit sheet.
+document.addEventListener('click', e => {
   const b = e.target.closest('[data-dir]'); if (!b) return;
-  const f = $('#sheetForm'), inp = f.elements[b.dataset.for], u = f.elements.unit ? f.elements.unit.value : 'ml';
+  const f = b.closest('form'); if (!f) return;
+  const inp = f.elements[b.dataset.for], u = f.elements.unit ? f.elements.unit.value : 'ml';
   const step = b.dataset.stepml ? (u === 'oz' ? b.dataset.stepml / 20 : +b.dataset.stepml) : +b.dataset.stepfix;
   inp.value = round2(Math.max(0, (parseFloat(inp.value) || 0) + step * b.dataset.dir));
   inp.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1293,22 +1306,14 @@ function syncTag(type, sync, isEdit) {
   if (isEdit) return sync.op.op === 'delete' ? ` · removed from ${target}` : ` · also on ${target}`;
   return sync.op.op === 'add' ? ` (also added to ${target})` : '';
 }
-$('#sheetForm').addEventListener('submit', e => {
-  const f = e.target, btn = e.submitter, { type, ed, b } = sheetState || {};
-  if (btn?.value === 'delete') {
-    if (ed && confirm('Delete this entry?')) {
-      const linked = linkedOf(ed);
-      op({ op: 'delete', id: ed.id });
-      if (linked) op({ op: 'delete', id: linked.id });
-      toast('Entry deleted', 7000, { label: 'Undo', fn: () => { op({ op: 'add', entry: ed }); if (linked) op({ op: 'add', entry: linked }); } });
-    } else e.preventDefault();
-    return;
-  }
-  if (!btn || btn.value !== 'save') return;
+// Shared by the edit modal's Save and the inline feed/pump loggers' submit: builds the entry from
+// the form, runs the builder's own validation/collect, syncs the linked feed/pump echo, saves, and
+// toasts with Undo. Returns true on success so the caller knows whether to reset the form.
+function submitLogEntry(f, type, ed, b, btn) {
   const entry = { id: ed ? ed.id : uid(), type, t: readWhen(f) };
   const nt = f.elements.note; if (nt && nt.value.trim()) entry.note = nt.value.trim();
   const err = b.collect(f, entry, btn);
-  if (err) { e.preventDefault(); setErr(err); return; }
+  if (err) { const el = f.querySelector('.ferr'); el.textContent = err; el.hidden = false; return false; }
   const fl = flagFor(entry);
   const sync = type === 'pump' ? syncPumpFeedLink(entry, ed) : type === 'feed' ? syncFeedPumpEcho(entry, ed) : null;
   if (ed) {
@@ -1322,6 +1327,49 @@ $('#sheetForm').addEventListener('submit', e => {
     toast(fl ? fl.msg : `Logged: ${detail(entry)}${syncTag(type, sync, false)}`, fl ? 8000 : 7000,
       { label: 'Undo', fn: () => { op({ op: 'delete', id: entry.id }); if (sync) sync.undo(); } });
   }
+  return true;
+}
+$('#sheetForm').addEventListener('submit', e => {
+  const f = e.target, btn = e.submitter, { type, ed, b } = sheetState || {};
+  if (btn?.value === 'delete') {
+    if (ed && confirm('Delete this entry?')) {
+      const linked = linkedOf(ed);
+      op({ op: 'delete', id: ed.id });
+      if (linked) op({ op: 'delete', id: linked.id });
+      toast('Entry deleted', 7000, { label: 'Undo', fn: () => { op({ op: 'add', entry: ed }); if (linked) op({ op: 'add', entry: linked }); } });
+    } else e.preventDefault();
+    return;
+  }
+  if (!btn || btn.value !== 'save') return;
+  if (!submitLogEntry(f, type, ed, b, btn)) e.preventDefault();
+});
+
+// Inline feed/pump loggers: the fields sit permanently in the Feeding/Pumping cards instead of
+// behind a button + sheet, so logging is "fill in, submit" with no extra tap to get there. Built
+// once (not on every render()) so a background poll or another log elsewhere never wipes a
+// half-filled form; refreshInlineLoggerIfStale() only rebuilds when this type's own last entry or
+// the day-of-life advice bucket has actually changed.
+const inlineLoggerState = {};
+function buildInlineLogger(type) {
+  const f = $(type === 'feed' ? '#feedLoggerForm' : '#pumpLoggerForm');
+  const cls = type === 'feed' ? 'feed-c' : 'pump-c';
+  const now = Date.now(), d = dayOfLife(now);
+  const b = BUILDERS[type](null, now, d, {});
+  f.innerHTML = `<div class="head"><i class="dot ${cls}"></i>${b.title}</div>${b.body}<p class="ferr" hidden></p><button type="submit" class="logbtn ${cls}" style="margin-top:12px">${type === 'feed' ? '🍼 Log feeding' : '🥛 Log pumping session'}</button>`;
+  wireForm(f, b);
+  const list = byType(type);
+  inlineLoggerState[type] = { b, d, lastId: list.length ? list[list.length - 1].id : null };
+}
+function refreshInlineLoggerIfStale(type) {
+  const list = byType(type), lastId = list.length ? list[list.length - 1].id : null, d = dayOfLife(Date.now());
+  const prev = inlineLoggerState[type];
+  if (!prev || prev.lastId !== lastId || prev.d !== d) buildInlineLogger(type);
+}
+['feed', 'pump'].forEach(type => {
+  $(type === 'feed' ? '#feedLoggerForm' : '#pumpLoggerForm').addEventListener('submit', e => {
+    e.preventDefault();
+    if (submitLogEntry(e.target, type, null, inlineLoggerState[type].b)) buildInlineLogger(type);
+  });
 });
 
 /* ---------- pumping tab ---------- */
@@ -1336,7 +1384,7 @@ function renderPump(now) {
     : 'On track. About 8 sessions in 24 hours, including one overnight, helps build supply in the early weeks.';
   const pumpActions = pumpTimer
     ? `<p class="fine" style="margin:4px 2px">⏱ Pumping timer running — see Timers above.</p>`
-    : `<button class="logbtn pump-c" data-log="pump">🥛 Log pumping session</button>`;
+    : '';
   heroCard('#pumpCard', 'pump-c', 'Pumping', all, iv, pumpActions, tip, ['Pumping tips', TIPS.pump]);
   const rec = realPumps.filter(l => now - l.t < 24 * H), total = rec.reduce((a, l) => a + (l.amt || 0), 0);
   const feeds24 = state.logs.filter(l => l.type === 'feed' && now - l.t < 24 * H);
@@ -1401,7 +1449,6 @@ function renderPump(now) {
   $('#pumpOutNote').textContent = weekTotal
     ? `${fmtVol(weekTotal, u)} pumped over the last 7 days, averaging ${fmtVol(Math.round(weekTotal / 7), u)}/day.`
     : 'Log a pumping session to see daily output here.';
-  $('#pumpLog').innerHTML = entryRows([...realPumps].sort((a, b) => b.t - a.t).slice(0, 40), 'No pumping sessions yet. Tap “Log pumping session”.');
 }
 
 /* ---------- journal tab ---------- */
