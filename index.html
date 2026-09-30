@@ -270,6 +270,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
 
   <div class="view" id="v-track">
   <div class="card tracker" id="pfNext" style="margin-bottom:12px"></div>
+  <div class="card tracker" id="timersCard" style="margin-bottom:12px"></div>
 
   <div class="pfGrid">
     <div class="pfCol feed">
@@ -647,6 +648,7 @@ function render() {
 
   renderAlerts(now);
   renderHero(now);
+  renderTimers(now);
   renderTiles(now);
   renderTimeline(now);
   renderSchedule(now);
@@ -808,23 +810,39 @@ setInterval(() => { if (pumpTimer) { const el = $('#pumpTimerClock'); if (el) el
 
 function renderHero() {
   const last = byType('feed').pop(), rep = repeatEntry(last);
-  let feedActions;
-  if (timer) {
-    const sideLbl = timer.side === 'LR' ? 'both sides' : timer.side === 'R' ? 'right side' : 'left side';
-    feedActions = `<div class="timerRun">
-        <div class="timerClock" id="timerClock">${fmtElapsed(Date.now() - timer.startedAt)}</div>
-        <div class="fine" style="margin:2px 0 0">Nursing · ${sideLbl} · started ${fmtT(timer.startedAt)}</div>
-        <div class="twoBtn" style="margin-top:10px"><button type="button" class="btn" data-timer="switch">⇄ Switch side</button><button type="button" class="btn" data-timer="cancel">✕ Cancel</button></div>
-        <button type="button" class="logbtn feed-c" data-timer="stop">■ Stop &amp; log feeding</button>
-      </div>`;
-  } else {
-    feedActions = (rep
+  const feedActions = timer
+    ? `<p class="fine" style="margin:4px 2px">⏱ Nursing timer running — see Timers above.</p>`
+    : rep
       ? `<button class="logbtn feed-c" data-quick="feed-repeat">↻ Same as last<small>${esc(detail(rep))}</small></button><button class="btn wide2" data-log="feed">Change or log something different…</button>`
-      : `<button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button>`)
-      + `<button type="button" class="btn wide2" data-timer="start">▶ Start nursing timer</button>`;
-  }
+      : `<button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button>`;
   const feedTip = last ? (feedTiming() || 'On rhythm. Feed on cue: rooting, hands to mouth or lip-smacking come before crying.') : 'Newborns feed 8–12 times a day, about every 2–3 hours. Log the first one to start the predictions.';
   heroCard('#feedCard', 'feed-c', 'Feeding', byType('feed'), feedInterval(), feedActions, feedTip, ['Feeding tips', TIPS.feeding]);
+}
+// Nursing and pumping timers used to live inside their own cards, split across two scroll
+// positions; they're combined here into one card so starting or watching either is one stop.
+function renderTimers(now) {
+  const sideLbl = s => s === 'LR' ? 'both sides' : s === 'R' ? 'right side' : 'left side';
+  const nursing = timer
+    ? `<div class="timerRun">
+        <div class="timerClock" id="timerClock">${fmtElapsed(now - timer.startedAt)}</div>
+        <div class="fine" style="margin:2px 0 0">Nursing · ${sideLbl(timer.side)} · started ${fmtT(timer.startedAt)}</div>
+        <div class="twoBtn" style="margin-top:10px"><button type="button" class="btn" data-timer="switch">⇄ Switch side</button><button type="button" class="btn" data-timer="cancel">✕ Cancel</button></div>
+        <button type="button" class="logbtn feed-c" data-timer="stop">■ Stop &amp; log feeding</button>
+      </div>`
+    : `<button type="button" class="logbtn feed-c" data-timer="start">▶ Start nursing timer</button>`;
+  const pumping = pumpTimer
+    ? `<div class="timerRun">
+        <div class="timerClock" id="pumpTimerClock" style="color:var(--pump)">${fmtElapsed(now - pumpTimer.startedAt)}</div>
+        <div class="fine" style="margin:2px 0 0">Pumping · started ${fmtT(pumpTimer.startedAt)}</div>
+        <button type="button" class="btn wide" style="margin-top:10px" data-ptimer="cancel">✕ Cancel</button>
+        <button type="button" class="logbtn pump-c" data-ptimer="stop">■ Stop &amp; log pumping</button>
+      </div>`
+    : `<button type="button" class="logbtn pump-c" data-ptimer="start">▶ Start pumping timer</button>`;
+  $('#timersCard').innerHTML = `<div class="head"><i class="dot feed-c"></i>Timers</div>
+    <div class="pfGrid" style="margin-top:12px">
+      <div class="pfCol feed"><div class="pfColHead"><i class="dot feed-c"></i>Nursing</div>${nursing}</div>
+      <div class="pfCol pump"><div class="pfColHead"><i class="dot pump-c"></i>Pumping</div>${pumping}</div>
+    </div>`;
 }
 
 // A rough expected total-intake-per-day range (mL), derived from the same per-feed figures at 8–12 feeds/day.
@@ -1317,13 +1335,8 @@ function renderPump(now) {
     : since > 4 * H ? `It has been ${dur(since)}. Try to pump at least every 3–4 hours in the early weeks.`
     : 'On track. About 8 sessions in 24 hours, including one overnight, helps build supply in the early weeks.';
   const pumpActions = pumpTimer
-    ? `<div class="timerRun">
-        <div class="timerClock" id="pumpTimerClock" style="color:var(--pump)">${fmtElapsed(now - pumpTimer.startedAt)}</div>
-        <div class="fine" style="margin:2px 0 0">Pumping · started ${fmtT(pumpTimer.startedAt)}</div>
-        <button type="button" class="btn wide" style="margin-top:10px" data-ptimer="cancel">✕ Cancel</button>
-        <button type="button" class="logbtn pump-c" data-ptimer="stop">■ Stop &amp; log pumping</button>
-      </div>`
-    : `<button class="logbtn pump-c" data-log="pump">🥛 Log pumping session</button><button type="button" class="btn wide2" data-ptimer="start">▶ Start pumping timer</button>`;
+    ? `<p class="fine" style="margin:4px 2px">⏱ Pumping timer running — see Timers above.</p>`
+    : `<button class="logbtn pump-c" data-log="pump">🥛 Log pumping session</button>`;
   heroCard('#pumpCard', 'pump-c', 'Pumping', all, iv, pumpActions, tip, ['Pumping tips', TIPS.pump]);
   const rec = realPumps.filter(l => now - l.t < 24 * H), total = rec.reduce((a, l) => a + (l.amt || 0), 0);
   const feeds24 = state.logs.filter(l => l.type === 'feed' && now - l.t < 24 * H);
