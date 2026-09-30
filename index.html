@@ -1355,7 +1355,6 @@ function renderPump(now) {
   };
   const up = buildSlots().filter(x => x.kind === 'feed' || x.kind === 'pump').sort((a, b) => a.start - b.start).slice(0, 6);
   $('#pfNext').innerHTML = `<div class="head"><i class="dot pump-c"></i>Next feed &amp; next pump</div>${nx('feed-c', '🍼 Feeding', byType('feed'), feedInterval())}${nx('pump-c', '🥛 Pumping', all, iv)}
-    <div class="twoBtn"><button class="logbtn feed-c" data-log="feed">🍼 Log feeding</button><button class="logbtn pump-c" data-log="pump">🥛 Log pumping</button></div>
     ${up.length ? `<div class="up"><b>Coming up:</b> ${up.map(x => `<span class="pill2">${fmtT(x.start)} ${x.kind === 'feed' ? '🍼' : '🥛'}</span>`).join('')}</div>` : ''}`;
   $('#pumpStash').innerHTML = lines.map(x => `<span>${x}</span>`).join('');
   const days = Array.from({ length: 7 }, (_, i) => { const dt = new Date(now); dt.setHours(0, 0, 0, 0); dt.setDate(dt.getDate() - (6 - i)); return dt; });
