@@ -378,7 +378,8 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   </section>
   </div>
   <div class="view" id="v-journal" hidden>
-    <div class="card tracker" id="jStatus"></div>
+    <div class="card tracker" id="jStatus" style="margin-bottom:12px"></div>
+    <div class="card tracker" id="careTimersCard" style="margin-bottom:12px"></div>
     <section><div class="sec-title">At a glance</div><div class="card" id="jGlance"></div></section>
     <section><div class="sec-title">Measurements</div><div class="card" id="jMeas"></div></section>
     <section><div class="sec-title">Weight trend</div><div class="card"><div class="bars" id="jWeightBars"></div></div></section>
@@ -412,7 +413,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
 let BIRTH = Date.now(), NAME = 'Baby';
 const H = 3600e3, M = 60e3;
 const FEED_SLOTS = 4, PUMP_SLOTS = 3;
-const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1', LS_VIEW = 'newborn-view-v1', LS_TIMER = 'newborn-timer-v1', LS_PUMP_TIMER = 'newborn-pump-timer-v1';
+const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-pending-v1', LS_VIEW = 'newborn-view-v1', LS_TIMER = 'newborn-timer-v1', LS_PUMP_TIMER = 'newborn-pump-timer-v1', LS_CARE_TIMERS = 'newborn-care-timers-v1';
 
 const FEED_PARTS = [['breast', 'Breast'], ['formula', 'Formula'], ['pumped', 'Pumped milk']];
 const SIDES = [['L', 'Left'], ['R', 'Right']];
@@ -632,6 +633,7 @@ function feedView(e) {
 const statusOf = k => STATUS.find(x => x[0] === k);
 function detail(e) {
   if (e.type === 'note') return kindName(NOTE_KINDS, e.kind) + (e.amt ? ` · ${fmtVol(e.amt, e.unit)}` : '');
+  if (e.type === 'care') { const k = CARE_KINDS.find(x => x[0] === e.kind); return `${k ? `${k[2]} ${k[1]}` : 'Bonding time'}${e.min ? ` · ${e.min} min` : ''}`; }
   if (e.type === 'pump') {
     if (e.note === AUTO_PUMP_NOTE) return `🤱 Breastfed ${e.dur ? `${e.dur} min ` : ''}· counts toward next pump, not a session`;
     const st = STORE.find(x => x[0] === e.store);
@@ -755,6 +757,9 @@ function feedTiming() {
    devices don't see the same running timer. */
 let timer = null; // { startedAt, side } or null
 let pumpTimer = null; // { startedAt } or null
+const CARE_KINDS = [['tummy', 'Tummy time', '🤸'], ['skin', 'Skin-to-skin', '🫶']];
+const CARE_GOAL_MIN = 60; // "an hour a day" for each
+let careTimers = { tummy: null, skin: null }; // { startedAt } or null, per kind
 const fmtElapsed = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 function lastBreastSide() {
   const last = byType('feed').map(normFeed).filter(n => String(n.kind).split(',').includes('breast') && n.sides).pop();
@@ -899,6 +904,23 @@ function pumpTimerStopQuiet() {    // Siri/Shortcuts hash hook: log immediately,
 }
 setInterval(() => { if (pumpTimer) { const el = $('#pumpTimerClock'); if (el) el.textContent = fmtElapsed(Date.now() - pumpTimer.startedAt); } }, 1000);
 
+// Tummy time / skin-to-skin timers: no amount to review afterward, so Stop logs straight away
+// (like the hands-free nursing/pumping stop) rather than opening a form. Goal is tracked per
+// calendar day per kind, toward CARE_GOAL_MIN each.
+function careTimerStart(kind) { careTimers[kind] = { startedAt: Date.now() }; lsSet(LS_CARE_TIMERS, careTimers); render(); }
+function careTimerCancel(kind) { careTimers[kind] = null; lsSet(LS_CARE_TIMERS, careTimers); render(); }
+function careTimerStop(kind) {
+  const t = careTimers[kind]; if (!t) return;
+  const min = Math.max(1, Math.round((Date.now() - t.startedAt) / M));
+  careTimers[kind] = null; lsSet(LS_CARE_TIMERS, careTimers);
+  const entry = { id: uid(), type: 'care', kind, t: t.startedAt, min };
+  op({ op: 'add', entry });
+  toast(`Logged: ${detail(entry)}`, 8000, { label: 'Undo', fn: () => op({ op: 'delete', id: entry.id }) });
+}
+setInterval(() => {
+  CARE_KINDS.forEach(([kind]) => { if (careTimers[kind]) { const el = $('#careClock-' + kind); if (el) el.textContent = fmtElapsed(Date.now() - careTimers[kind].startedAt); } });
+}, 1000);
+
 function renderHero() {
   const last = byType('feed').pop(), rep = repeatEntry(last);
   const feedActions = timer
@@ -1039,7 +1061,7 @@ function renderSchedule(now) {
   $('#sched').innerHTML = list('feed', '🍼 Next feedings');
 }
 
-const DOT = { feed: 'feed-c', note: 'note-c', pump: 'pump-c', journal: 'journal-c' };
+const DOT = { feed: 'feed-c', note: 'note-c', pump: 'pump-c', journal: 'journal-c', care: 'journal-c' };
 function entryRows(items, empty) {
   return items.length ? items.map(l => {
     const f = flagFor(l);
@@ -1258,6 +1280,23 @@ const BUILDERS = {
         entry.unit = u;
         entry.fed = el.fed.value === '1';
         if (entry.fed) entry.fedAt = readWhen(f, 'fedWhen');
+      },
+    };
+  },
+
+  // Tummy time / skin-to-skin entries are created by their timer, but still editable/deletable
+  // like anything else — same modal, just a duration and a note.
+  care(ed, at, d) {
+    const src = ed || {}, k = CARE_KINDS.find(x => x[0] === src.kind) || CARE_KINDS[0];
+    return {
+      title: `${k[2]} ${k[1]}`, vol: [],
+      body: `<div class="field"><label class="l">Minutes</label>${stepper('min', src.min ?? '', { fix: 5 })}</div>
+        ${whenField(at, ed && at)}${noteField('', src.note)}`,
+      update() {},
+      collect(f, entry) {
+        entry.kind = k[0];
+        entry.min = parseFloat(f.elements.min.value) || undefined;
+        if (!entry.min) return 'Add a duration.';
       },
     };
   },
@@ -1573,8 +1612,33 @@ function renderPump(now) {
     : 'Log a bottle feed with its time on the nipple to see it here.';
 }
 
+// Tummy time / skin-to-skin: a shared-shape mini timer card per kind, each toward CARE_GOAL_MIN
+// minutes for the current calendar day (so the bar resets with the day, not a rolling 24 h).
+function renderCareTimers(now) {
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const section = ([kind, label, icon]) => {
+    const t = careTimers[kind];
+    const totalMin = state.logs.filter(l => l.type === 'care' && l.kind === kind && l.t >= todayStart.getTime()).reduce((a, l) => a + (l.min || 0), 0);
+    const pct = Math.min(100, totalMin / CARE_GOAL_MIN * 100);
+    const running = t
+      ? `<div class="timerRun">
+          <div class="timerClock" id="careClock-${kind}" style="color:var(--journal)">${fmtElapsed(now - t.startedAt)}</div>
+          <div class="fine" style="margin:2px 0 0">${label} · started ${fmtT(t.startedAt)}</div>
+          <button type="button" class="btn wide" style="margin-top:10px" data-ctimer="cancel-${kind}">✕ Cancel</button>
+          <button type="button" class="logbtn journal-c" data-ctimer="stop-${kind}">■ Stop &amp; log</button>
+        </div>`
+      : `<button type="button" class="logbtn journal-c" data-ctimer="start-${kind}">▶ Start ${label.toLowerCase()}</button>`;
+    return `<div class="pfCol"><div class="pfColHead"><i class="dot journal-c"></i>${icon} ${label}</div>${running}
+      <div class="fine" style="margin-top:8px">${totalMin} of ${CARE_GOAL_MIN} min today</div>
+      <div class="meter" style="margin-top:4px"><div class="fill ${pct >= 100 ? 'ok' : 'low'}" style="width:${pct}%"></div></div>
+      </div>`;
+  };
+  $('#careTimersCard').innerHTML = `<div class="head"><i class="dot journal-c"></i>Bonding timers</div>
+    <div class="pfGrid" style="margin-top:12px">${CARE_KINDS.map(section).join('')}</div>`;
+}
 /* ---------- journal tab ---------- */
 function renderJournal(now) {
+  renderCareTimers(now);
   const js = state.logs.filter(l => l.type === 'journal').sort((a, b) => b.t - a.t), d = dayOfLife(now);
   const lastSt = js.find(l => l.status), st = lastSt && statusOf(lastSt.status);
   $('#jStatus').innerHTML = `<div class="head"><i class="dot journal-c"></i>How is she doing?</div>
@@ -1600,7 +1664,8 @@ function renderJournal(now) {
     const deltaTxt = delta == null ? '' : ` · ${delta >= 0 ? '+' : '−'}${l.sys === 'metric' ? Math.round(Math.abs(delta)) + ' g' : round1(Math.abs(delta) / 28.3495) + ' oz'}`;
     return `<div class="row"><span>${new Date(l.t).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span><span class="track" role="img" aria-label="${fmtWeight(l.wtG, l.sys)}"><i style="width:${frac * 100}%;background:var(--journal)"></i></span><span class="val">${fmtWeight(l.wtG, l.sys)}${deltaTxt}</span></div>`;
   }).join('') : '<p class="empty">No weight logged yet. Tap ⚖️ Log weight above.</p>';
-  $('#jLog').innerHTML = entryRows(js.slice(0, 60), 'Nothing here yet. Tap how she is doing, or add a note.');
+  const jItems = [...js, ...state.logs.filter(l => l.type === 'care')].sort((a, b) => b.t - a.t).slice(0, 60);
+  $('#jLog').innerHTML = entryRows(jItems, 'Nothing here yet. Tap how she is doing, or add a note.');
   $('#jGuide').innerHTML = TIPS.health;
 }
 
@@ -1707,6 +1772,8 @@ document.addEventListener('click', e => {
   if (tm) return ({ start: timerStart, switch: timerSwitch, cancel: timerCancel, stop: timerStopAndLog })[tm.dataset.timer]?.();
   const ptm = e.target.closest('[data-ptimer]');
   if (ptm) return ({ start: pumpTimerStart, cancel: pumpTimerCancel, stop: pumpTimerStopAndLog })[ptm.dataset.ptimer]?.();
+  const ctm = e.target.closest('[data-ctimer]');
+  if (ctm) { const [action, kind] = ctm.dataset.ctimer.split('-'); return ({ start: careTimerStart, cancel: careTimerCancel, stop: careTimerStop })[action]?.(kind); }
   const l = e.target.closest('[data-log]'); if (l) return openSheet(l.dataset.log, { kind: l.dataset.kind, weightOnly: !!l.dataset.weight });
   const ed = e.target.closest('[data-edit]'); if (ed) { const en = state.logs.find(x => x.id === ed.dataset.edit); if (en) openSheet(en.type, { edit: en }); return; }
   const stt = e.target.closest('[data-status]'); if (stt) return quickStatus(stt.dataset.status);
@@ -1782,7 +1849,7 @@ $('#vitDBtn').addEventListener('click', logVitaminD);
 /* ---------- boot ---------- */
 (async function boot() {
   state = lsGet(LS) || state; state.settings = state.settings || {};
-  pending = lsGet(LS_PEND) || []; cfg = lsGet(LS_CFG); timer = lsGet(LS_TIMER) || null; pumpTimer = lsGet(LS_PUMP_TIMER) || null;
+  pending = lsGet(LS_PEND) || []; cfg = lsGet(LS_CFG); timer = lsGet(LS_TIMER) || null; pumpTimer = lsGet(LS_PUMP_TIMER) || null; careTimers = lsGet(LS_CARE_TIMERS) || { tummy: null, skin: null };
   // One-time setup link: https://…/#u=<web app url>&k=<secret>. The hash never leaves the browser.
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get('u') && h.get('k')) { history.replaceState(null, '', location.pathname + location.search); render(); await connect({ url: h.get('u'), key: h.get('k') }, {}); }
