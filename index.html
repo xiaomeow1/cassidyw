@@ -279,7 +279,7 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
         <input type="text" name="q" id="quickEntryInput" placeholder="&quot;pumped 90ml for 15 min&quot; or &quot;breastfed 12 min left side&quot;" style="flex:1;width:100%" autocomplete="off">
         <button type="button" id="quickEntryMic" class="btn" hidden aria-label="Dictate">🎤</button>
       </div>
-      <p class="fine" style="margin-top:6px">Mentioning "pumped", "breastfed"/"nursed" or "formula" tells it what to log, plus an amount (mL/oz) or a duration in minutes. On iPhone, the keyboard's own microphone dictates into the box.</p>
+      <p class="fine" style="margin-top:6px">Mentioning "pumped", "breastfed"/"nursed", "formula" or "vitamin D" tells it what to log, plus an amount (mL/oz) or a duration in minutes. On iPhone, the keyboard's own microphone dictates into the box.</p>
     </div>
     <p class="ferr" id="quickEntryErr" hidden></p>
     <button type="submit" class="logbtn" style="background:var(--accent)">Log it</button>
@@ -290,7 +290,10 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
       <div class="pfColHead"><i class="dot feed-c"></i>Feeding</div>
       <div class="card tracker" id="feedCard"></div>
       <form class="card" id="feedLoggerForm" style="margin-top:12px"></form>
-      <button class="btn wide" data-log="note" type="button"><i class="dot note-c"></i>Spit-up or note</button>
+      <div class="twoBtn">
+        <button class="btn wide" data-log="note" type="button"><i class="dot note-c"></i>Spit-up or note</button>
+        <button class="btn wide" id="vitDBtn" type="button">💊 Vitamin D</button>
+      </div>
       <div class="callout tips" id="now" style="margin-top:12px"></div>
       <section>
         <div class="sec-title">Last 24 hours</div>
@@ -355,6 +358,13 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   </section>
 
   <section>
+    <div class="sec-title"><i class="dot feed-c" style="display:inline-block;margin-right:6px"></i>Bottle-feeding time</div>
+    <div class="card">
+      <div class="bars" id="bottleMinBars"></div><p class="fine" id="bottleMinNote" style="margin-top:10px"></p>
+    </div>
+  </section>
+
+  <section>
     <details class="card more-all">
       <summary style="cursor:pointer;font-weight:600">Sleep, safe sleep &amp; when to call the pediatrician</summary>
       <div class="tips" id="moreGuide" style="margin-top:12px"></div>
@@ -407,7 +417,7 @@ const LS = 'newborn-state-v1', LS_CFG = 'newborn-config-v1', LS_PEND = 'newborn-
 const FEED_PARTS = [['breast', 'Breast'], ['formula', 'Formula'], ['pumped', 'Pumped milk']];
 const SIDES = [['L', 'Left'], ['R', 'Right']];
 const LEGACY_FEED = { 'breast-l': 'Breast · Left', 'breast-r': 'Breast · Right', formula: 'Formula', pumped: 'Pumped milk' }; // entries from the first version
-const NOTE_KINDS = [['spitup','Spit-up'],['vomit','Vomit'],['other','Other note']];
+const NOTE_KINDS = [['spitup','Spit-up'],['vomit','Vomit'],['vitaminD','Vitamin D'],['other','Other note']];
 const STORE = [['fridge', 'Fridge'], ['freezer', 'Freezer'], ['fed', 'Fed to baby'], ['discarded', 'Discarded / spilled']];
 const STATUS = [['content', '😊', 'Content'], ['sleepy', '😴', 'Sleepy'], ['alert', '👀', 'Alert'], ['fussy', '😣', 'Fussy'], ['gassy', '💨', 'Gassy'], ['unwell', '🤒', 'Unwell']];
 const TAGS = [['jaundice', 'Jaundice'], ['rash', 'Rash'], ['congestion', 'Congestion'], ['cord', 'Cord stump'], ['cluster', 'Cluster feeding'], ['bath', 'Bath'], ['skin', 'Skin-to-skin'], ['tummy', 'Tummy time'], ['doctor', 'Doctor visit'], ['milestone', 'Milestone']];
@@ -642,7 +652,7 @@ function detail(e) {
       if (k === 'pumped') return 'Pumped' + (n.pMl ? ` ${fmtVol(n.pMl, u)}` : '');
       return k;
     });
-    return parts.join(' + ') + (n.fMl && n.pMl ? ` · bottle total ${fmtVol(n.fMl + n.pMl, u)}` : '');
+    return parts.join(' + ') + (n.fMl && n.pMl ? ` · bottle total ${fmtVol(n.fMl + n.pMl, u)}` : '') + (n.bottleMin ? ` · ${n.bottleMin} min on the nipple` : '');
   }
   return e.kind || e.type;
 }
@@ -705,6 +715,7 @@ function repeatEntry(last) {
   if (n.min) e.min = n.min;
   if (n.fMl) e.fMl = n.fMl;
   if (n.pMl) e.pMl = n.pMl;
+  if (n.bottleMin) e.bottleMin = n.bottleMin;
   if (e.fMl || e.pMl) { e.amt = (e.fMl || 0) + (e.pMl || 0); if (n.unit) e.unit = n.unit; }
   return e;
 }
@@ -817,8 +828,9 @@ function parseQuickEntry(raw) {
 
   const side = /\bboth( sides)?\b|\bleft (?:and|&|\+) right\b/.test(t) ? 'LR' : /\bleft\b/.test(t) ? 'L' : /\bright\b/.test(t) ? 'R' : undefined;
   const fed = /\bfed\b|\bgave (?:it|her)\b|\bto baby\b/.test(t);
+  const isVitaminD = /\bvit(?:amin)? ?d\b/.test(t);
   const isPump = /\bpump/.test(t), isBreast = /\bbreast|\bnurs/.test(t), isFormula = /\bformula\b/.test(t), isBottle = /\bbottle\b/.test(t);
-  return { ago, amt, unit, min, side, fed, isPump, isBreast, isFormula, isBottle };
+  return { ago, amt, unit, min, side, fed, isVitaminD, isPump, isBreast, isFormula, isBottle };
 }
 // Turns a parsed sentence into a ready-to-save entry, or an { error } explaining what's missing —
 // mirrors what BUILDERS.feed/pump's own collect() requires, so a text entry is never less valid
@@ -826,6 +838,7 @@ function parseQuickEntry(raw) {
 function quickEntryFromText(raw) {
   const p = parseQuickEntry(raw);
   const t = Date.now() - p.ago * M;
+  if (p.isVitaminD) return { type: 'note', entry: { id: uid(), type: 'note', t, kind: 'vitaminD' } };
   if (p.isPump) {
     if (p.amt == null && p.min == null) return { error: 'Couldn’t find an amount or a duration — try "pumped 90ml for 15 min".' };
     const entry = { id: uid(), type: 'pump', t };
@@ -842,7 +855,9 @@ function quickEntryFromText(raw) {
   if (p.isFormula || p.isBottle) {
     if (p.amt == null) return { error: 'Couldn’t find an amount — try "formula 60ml".' };
     const ml = toMl(p.amt, p.unit);
-    return { type: 'feed', entry: { id: uid(), type: 'feed', t, kind: 'formula', fMl: ml, amt: ml, unit: p.unit } };
+    const entry = { id: uid(), type: 'feed', t, kind: 'formula', fMl: ml, amt: ml, unit: p.unit };
+    if (p.min != null) entry.bottleMin = p.min;
+    return { type: 'feed', entry };
   }
   return { error: 'Couldn’t tell if that was a feed or a pump — try starting with "pumped", "breastfed" or "formula".' };
 }
@@ -850,7 +865,7 @@ function submitQuickEntry(text) {
   const res = quickEntryFromText(text);
   if (res.error) return res;
   const { type, entry } = res;
-  const sync = type === 'pump' ? syncPumpFeedLink(entry, null) : syncFeedPumpEcho(entry, null);
+  const sync = type === 'pump' ? syncPumpFeedLink(entry, null) : type === 'feed' ? syncFeedPumpEcho(entry, null) : null;
   op({ op: 'add', entry });
   if (sync) op(sync.op);
   const fl = flagFor(entry);
@@ -967,12 +982,17 @@ function renderTiles(now) {
   const recent = state.logs.filter(l => now - l.t < 24 * H);
   const { feeds } = counts24(now);
   const tile = (k, v, goal, ok) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="g">goal ${goal}</div><div class="st ${ok ? 'ok' : 'low'}">${ok ? '✓ On track' : 'Below goal so far'}</div></div>`;
-  const spits = recent.filter(l => l.type === 'note' && l.kind !== 'other'), ml = spits.reduce((a, l) => a + (l.amt || 0), 0);
+  const spits = recent.filter(l => l.type === 'note' && l.kind !== 'other' && l.kind !== 'vitaminD'), ml = spits.reduce((a, l) => a + (l.amt || 0), 0);
   const bu = defaultUnit('feed'), feedsToday = recent.filter(l => l.type === 'feed');
   const estimates = feedsToday.map(estimatedFeedMl), counted = estimates.filter(x => x != null), unmeasured = feedsToday.length - counted.length;
   const totalMl = counted.reduce((a, x) => a + x, 0);
   const amtLine = totalMl ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Amount logged: ${fmtVol(totalMl, bu)} across ${counted.length} feed${counted.length === 1 ? '' : 's'}${unmeasured ? ` (${unmeasured} more without an amount or duration)` : ''}.</div>` : '';
-  const extra = amtLine + (spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${fmtVol(ml, defaultUnit('note'))} lost` : ''}</div>` : '');
+  // Vitamin D is a once-a-day dose, so "given today" means the calendar day, not a rolling 24 h —
+  // otherwise a dose given at 11pm would still read as "covered" at 10pm the next night.
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const vitD = state.logs.filter(l => l.type === 'note' && l.kind === 'vitaminD' && l.t >= todayStart.getTime()).sort((a, b) => b.t - a.t)[0];
+  const vitDLine = `<div class="fine" style="grid-column:1/-1;margin:0 2px">💊 Vitamin D: ${vitD ? `✓ given at ${fmtT(vitD.t)}` : 'not given yet today'}</div>`;
+  const extra = amtLine + vitDLine + (spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${fmtVol(ml, defaultUnit('note'))} lost` : ''}</div>` : '');
   $('#tiles').innerHTML = extra + tile('Feedings', feeds, '8–12', feeds >= 8);
   renderIntakeMeter(d, totalMl, bu, unmeasured);
 }
@@ -1117,6 +1137,8 @@ const BUILDERS = {
     const fv = src ? (src.fMl ? fromMl(src.fMl, unit) : '') : fromMl(lastN?.fMl ?? mid, unit);
     const pv = src ? (src.pMl ? fromMl(src.pMl, unit) : '') : fromMl(lastN?.pMl ?? mid, unit);
     const mins = [...new Set(['5', '10', '15', '20', '30', ...(minVal ? [String(minVal)] : [])])].sort((a, b) => a - b);
+    const bottleMinVal = timerData ? undefined : src?.bottleMin ?? rep?.bottleMin;
+    const bottleMins = [...new Set(['5', '10', '15', '20', '30', ...(bottleMinVal ? [String(bottleMinVal)] : [])])].sort((a, b) => a - b);
     const atFinal = timerData ? timerData.t : at;
     return {
       title: '🍼 Log feeding', vol: ['fMl', 'pMl'], canon: { fMl: src?.fMl, pMl: src?.pMl },
@@ -1127,11 +1149,13 @@ const BUILDERS = {
         <div class="field secFormula"><label class="l">Formula</label>${stepper('fMl', fv, { ml: 5 })}<div class="ctxFormula"></div></div>
         <div class="field secPumped"><label class="l">Pumped milk</label>${stepper('pMl', pv, { ml: 5 })}<div class="ctxPumped"></div></div>
         <div class="callout bottleTotal" style="margin:0"></div>
+        <div class="field secBottleMin"><label class="l">Time fed through the nipple, minutes (optional)</label>${chips('bottleMin', [['', 'Skip'], ...bottleMins.map(m => [m, m])], bottleMinVal ? String(bottleMinVal) : '')}<div class="ctxBottleMin"></div></div>
         ${whenField(atFinal, (ed || timerData) && atFinal)}${noteField('latched well, sleepy…', ed?.note)}`,
       update(f) {
         const on = k => f.querySelector(`input[name=parts][value=${k}]`).checked, u = f.elements.unit.value;
         f.querySelector('.secBreast').hidden = !on('breast'); f.querySelector('.secFormula').hidden = !on('formula'); f.querySelector('.secPumped').hidden = !on('pumped');
         f.querySelector('.secUnit').hidden = !(on('formula') || on('pumped'));
+        f.querySelector('.secBottleMin').hidden = !(on('formula') || on('pumped'));
         const fm = on('formula') ? +f.elements.fMl.value || 0 : 0, pm = on('pumped') ? +f.elements.pMl.value || 0 : 0, tot = fm + pm;
         const bt = f.querySelector('.bottleTotal');
         bt.hidden = !(on('formula') || on('pumped'));
@@ -1142,6 +1166,7 @@ const BUILDERS = {
         f.querySelector('.ctxBreast').innerHTML = ctxHtml([{ level: 'ok', text: 'Start on the side she finished on last time. A good latch: wide mouth, lips flanged out, steady swallowing. After a C-section, football hold or side-lying keeps weight off your incision.' + (on('breast') ? ' Logging a duration also updates the Pump / Feed tab, to track how often and how long she nurses — try the ▶ timer on the Feeding card next time to fill this in automatically.' : '') }]);
         f.querySelector('.ctxFormula').innerHTML = ctxHtml([{ level: 'ok', text: `Typical on day ${d}: ${volRange(r[0], r[1], u)} per feed. Pace the bottle, stop at fullness cues, toss leftovers after 1 hour.` }]);
         f.querySelector('.ctxPumped').innerHTML = ctxHtml([{ level: 'ok', text: 'Room temperature up to 4 h · fridge 4 days · freezer about 6 months. Warm in a bowl of warm water and swirl, don\'t shake.' }]);
+        f.querySelector('.ctxBottleMin').innerHTML = ctxHtml([{ level: 'ok', text: 'Pacing a bottle to take about as long as nursing (often 10–20 minutes) helps her keep up with fullness cues and avoid overfeeding.' }]);
       },
       collect(f, entry) {
         const el = f.elements, u = el.unit.value, parts = [...f.querySelectorAll('input[name=parts]:checked')].map(i => i.value);
@@ -1151,6 +1176,7 @@ const BUILDERS = {
           entry.sides = [...f.querySelectorAll('input[name=sides]:checked')].map(i => i.value).join('') || undefined;
           entry.min = parseFloat(el.min.value) || undefined;
         }
+        if (parts.includes('formula') || parts.includes('pumped')) entry.bottleMin = parseFloat(el.bottleMin.value) || undefined;
         if (parts.includes('formula')) entry.fMl = readMl(el.fMl, u) || undefined;
         if (parts.includes('pumped')) entry.pMl = readMl(el.pMl, u) || undefined;
         entry.amt = (entry.fMl || 0) + (entry.pMl || 0) || undefined;   // bottle total only, never breast
@@ -1172,16 +1198,17 @@ const BUILDERS = {
         ${whenField(at, ed && at)}<div class="field"><label class="l">Note</label><input type="text" name="note" value="${esc(ed?.note || '')}" placeholder="right after feeding, gassy, fussy…" style="width:100%"></div>`,
       update(f) {
         const k = f.elements.kind.value;
-        $('#secSize').hidden = k === 'other';
+        $('#secSize').hidden = k === 'other' || k === 'vitaminD';
         $('#ctx').innerHTML = ctxHtml([k === 'vomit'
           ? { level: 'watch', text: '<b>Vomit</b> is larger or forceful. Call the pediatrician if it shoots out, is green or yellow-green, bloody, keeps happening after feeds, or comes with fever, a swollen belly, fewer wet diapers or poor feeding.' }
           : k === 'spitup' ? { level: 'ok', text: '<b>Spit-up</b> is common: a small, effortless dribble during or after feeds, usually 5–15 mL. It often looks like more than it is. Burp mid-feed and hold her upright for 15–20 minutes afterwards.' }
+          : k === 'vitaminD' ? { level: 'ok', text: 'The AAP recommends 400 IU a day for breastfed (and most formula-fed) babies, starting in the first days of life. Give it around the same time each day so it’s easy to remember.' }
           : { level: 'ok', text: 'Anything worth remembering for the pediatrician: fussiness, rash, sleepiness, a temperature reading.' }]);
       },
       collect(f, entry, btn) {
         const el = f.elements, u = el.unit.value;
         entry.kind = el.kind.value;
-        if (entry.kind !== 'other') { entry.amt = (btn?.dataset.ml ? +btn.dataset.ml : readMl(el.amt, u)) || undefined; if (entry.amt) entry.unit = u; }
+        if (entry.kind !== 'other' && entry.kind !== 'vitaminD') { entry.amt = (btn?.dataset.ml ? +btn.dataset.ml : readMl(el.amt, u)) || undefined; if (entry.amt) entry.unit = u; }
       },
     };
   },
@@ -1340,6 +1367,7 @@ function repeatFeed() {
   logQuick(entry, `Logged: ${detail(entry)}${sync ? ' (also added to Pumping)' : ''}`, sync && sync.op.entry);
 }
 const quickStatus = k => logQuick({ id: uid(), type: 'journal', t: Date.now(), status: k }, `${statusOf(k)[1]} Logged: ${statusOf(k)[2]}`);
+const logVitaminD = () => logQuick({ id: uid(), type: 'note', t: Date.now(), kind: 'vitaminD' }, '💊 Vitamin D logged');
 
 // Delegated from document (not just the modal) so the +/- steppers work in the inline
 // feed/pump loggers too, not only the edit sheet.
@@ -1525,6 +1553,24 @@ function renderPump(now) {
   $('#pumpOutNote').textContent = weekTotal
     ? `${fmtVol(weekTotal, u)} pumped over the last 7 days, averaging ${fmtVol(Math.round(weekTotal / 7), u)}/day.`
     : 'Log a pumping session to see daily output here.';
+  // Bottle-feeding time: minutes spent feeding through the nipple (formula or pumped milk by
+  // bottle), day by day — placed right next to pumping output so the two are easy to compare.
+  const bottleRows = days.map(dt => {
+    const t0 = dt.getTime(), t1 = t0 + 24 * H;
+    const dayBottles = state.logs.filter(l => l.type === 'feed' && l.t >= t0 && l.t < t1 && normFeed(l).bottleMin);
+    return { dt, min: dayBottles.reduce((a, l) => a + normFeed(l).bottleMin, 0), n: dayBottles.length };
+  });
+  const bottleScale = Math.max(1, ...bottleRows.map(r => r.min));
+  $('#bottleMinBars').innerHTML = bottleRows.map(r => {
+    const fillW = Math.min(100, r.min / bottleScale * 100);
+    return `<div class="row"><span>${r.dt.toLocaleDateString([], { weekday: 'short', day: 'numeric' })}</span>
+      <span class="track" role="img" aria-label="${r.min} minutes on the nipple"><i style="width:${fillW}%;background:var(--feed)"></i></span>
+      <span class="val">${r.min ? `${r.min} min` : '–'}${r.n ? ` · ${r.n} feed${r.n === 1 ? '' : 's'}` : ''}</span></div>`;
+  }).join('');
+  const bottleWeekTotal = bottleRows.reduce((a, r) => a + r.min, 0);
+  $('#bottleMinNote').textContent = bottleWeekTotal
+    ? `${bottleWeekTotal} min on the nipple over the last 7 days, averaging ${Math.round(bottleWeekTotal / 7)} min/day.`
+    : 'Log a bottle feed with its time on the nipple to see it here.';
 }
 
 /* ---------- journal tab ---------- */
@@ -1731,6 +1777,7 @@ $('#cfgForm').addEventListener('submit', async e => {
   else if (Object.keys(settings).length) op({ op: 'settings', settings });
 });
 $('#mode').addEventListener('click', openSettings);
+$('#vitDBtn').addEventListener('click', logVitaminD);
 
 /* ---------- boot ---------- */
 (async function boot() {
