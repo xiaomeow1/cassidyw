@@ -269,9 +269,6 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   <div id="alerts"></div>
 
   <div class="view" id="v-track">
-  <div class="card tracker" id="pfNext" style="margin-bottom:12px"></div>
-  <div class="card tracker" id="timersCard" style="margin-bottom:12px"></div>
-
   <form class="card tracker" id="quickEntryForm" style="margin-bottom:12px">
     <div class="head"><i class="dot feed-c"></i>Type or say it</div>
     <div class="field">
@@ -284,6 +281,9 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
     <p class="ferr" id="quickEntryErr" hidden></p>
     <button type="submit" class="logbtn" style="background:var(--accent)">Log it</button>
   </form>
+
+  <div class="card tracker" id="pfNext" style="margin-bottom:12px"></div>
+  <div class="card tracker" id="timersCard" style="margin-bottom:12px"></div>
 
   <div class="pfGrid">
     <div class="pfCol feed">
@@ -311,21 +311,21 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
   </div>
 
   <section>
-    <div class="sec-title"><i class="dot feed-c" style="display:inline-block;margin-right:6px"></i>Feeding timeline</div>
-    <div class="card">
-      <div class="legend">
+    <details class="card more-all">
+      <summary style="cursor:pointer;font-weight:600"><i class="dot feed-c" style="display:inline-block;margin-right:6px"></i>Feeding timeline</summary>
+      <div class="legend" style="margin-top:12px">
         <span><i class="dot feed-c"></i>Feeding</span>
         <span><i class="dot note-c"></i>Spit-up / notes</span>
         <span><i class="ring"></i>Predicted</span>
       </div>
       <div id="tl"></div>
-    </div>
+    </details>
   </section>
 
   <section>
-    <div class="sec-title"><i class="dot feed-c" style="display:inline-block;margin-right:6px"></i>Upcoming feeds &amp; calendar</div>
-    <div class="card">
-      <div class="sched" id="sched"></div>
+    <details class="card more-all">
+      <summary style="cursor:pointer;font-weight:600"><i class="dot feed-c" style="display:inline-block;margin-right:6px"></i>Upcoming feeds &amp; calendar</summary>
+      <div class="sched" id="sched" style="margin-top:12px"></div>
       <div class="settings">
         <label for="feedInt">Feed spacing</label>
         <select id="feedInt">
@@ -339,29 +339,22 @@ table.meas th { color: var(--ink-2); font-weight: 600; font-size: 11px; }
         <div class="msg" id="calMsg"></div>
         <button class="btn" id="icsBtn">Download .ics</button>
       </div>
-    </div>
+    </details>
   </section>
 
   <section>
-    <div class="sec-title"><i class="dot pump-c" style="display:inline-block;margin-right:6px"></i>Breast milk &amp; formula vs. what she needs</div>
-    <div class="card">
-      <div class="legend"><span><i class="dot" style="background:var(--pump)"></i>Breast milk</span><span><i class="dot" style="background:var(--formula)"></i>Formula</span><span><i class="ring" style="border-color:var(--meter-band)"></i>Typical need</span></div>
+    <details class="card more-all">
+      <summary style="cursor:pointer;font-weight:600"><i class="dot pump-c" style="display:inline-block;margin-right:6px"></i>Breast milk &amp; formula vs. what she needs</summary>
+      <div class="legend" style="margin-top:12px"><span><i class="dot" style="background:var(--pump)"></i>Breast milk</span><span><i class="dot" style="background:var(--formula)"></i>Formula</span><span><i class="ring" style="border-color:var(--meter-band)"></i>Typical need</span></div>
       <div class="bars" id="pumpBars"></div><p class="fine" id="pumpBarsNote" style="margin-top:10px"></p>
-    </div>
+    </details>
   </section>
 
   <section>
-    <div class="sec-title"><i class="dot pump-c" style="display:inline-block;margin-right:6px"></i>Daily pumping output</div>
-    <div class="card">
-      <div class="bars" id="pumpOutBars"></div><p class="fine" id="pumpOutNote" style="margin-top:10px"></p>
-    </div>
-  </section>
-
-  <section>
-    <div class="sec-title"><i class="dot feed-c" style="display:inline-block;margin-right:6px"></i>Bottle-feeding time</div>
-    <div class="card">
-      <div class="bars" id="bottleMinBars"></div><p class="fine" id="bottleMinNote" style="margin-top:10px"></p>
-    </div>
+    <details class="card more-all">
+      <summary style="cursor:pointer;font-weight:600"><i class="dot pump-c" style="display:inline-block;margin-right:6px"></i>Daily pumping output</summary>
+      <div class="bars" id="pumpOutBars" style="margin-top:12px"></div><p class="fine" id="pumpOutNote" style="margin-top:10px"></p>
+    </details>
   </section>
 
   <section>
@@ -767,20 +760,23 @@ function lastBreastSide() {
 }
 function timerStart() { timer = { startedAt: Date.now(), side: lastBreastSide() }; lsSet(LS_TIMER, timer); render(); }
 function timerCancel() { timer = null; lsSet(LS_TIMER, null); render(); }
-function timerSwitch() { if (!timer) return; if (timer.side.length === 1) timer.side = 'LR'; lsSet(LS_TIMER, timer); render(); }
+// Flips which side she's on now (so the running display actually shows the side you just switched
+// to, not an immediate jump to "both"); bothSides remembers that the session has used both breasts,
+// so the side that gets logged once you stop reflects the whole session, not just where it ended.
+function timerSwitch() { if (!timer) return; timer.side = timer.side === 'R' ? 'L' : 'R'; timer.bothSides = true; lsSet(LS_TIMER, timer); render(); }
 // Ends the timer and hands back a plain feed entry, without touching the log — used by both the
 // in-app button (which still opens the sheet to add formula/pumped, if any) and the hands-free path.
 function timerStopEntry() {
   if (!timer) return null;
   const t = timer, min = Math.max(1, Math.round((Date.now() - t.startedAt) / M));
   timer = null; lsSet(LS_TIMER, null);
-  return { id: uid(), type: 'feed', t: t.startedAt, kind: 'breast', sides: t.side, min };
+  return { id: uid(), type: 'feed', t: t.startedAt, kind: 'breast', sides: t.bothSides ? 'LR' : t.side, min };
 }
 function timerStopAndLog() {   // in-app "Stop & log" button: review in the sheet before saving
   if (!timer) return;
   const t = timer, min = Math.max(1, Math.round((Date.now() - t.startedAt) / M));
   timer = null; lsSet(LS_TIMER, null);
-  openSheet('feed', { timer: { t: t.startedAt, min, sides: t.side } });
+  openSheet('feed', { timer: { t: t.startedAt, min, sides: t.bothSides ? 'LR' : t.side } });
 }
 function timerStopQuiet() {    // Siri/Shortcuts hash hook: log immediately, no screen needed
   const entry = timerStopEntry(); if (!entry) return;
@@ -938,7 +934,7 @@ function renderTimers(now) {
   const nursing = timer
     ? `<div class="timerRun">
         <div class="timerClock" id="timerClock">${fmtElapsed(now - timer.startedAt)}</div>
-        <div class="fine" style="margin:2px 0 0">Nursing · ${sideLbl(timer.side)} · started ${fmtT(timer.startedAt)}</div>
+        <div class="fine" style="margin:2px 0 0">Nursing · ${sideLbl(timer.side)}${timer.bothSides ? ' (both sides so far)' : ''} · started ${fmtT(timer.startedAt)}</div>
         <div class="twoBtn" style="margin-top:10px"><button type="button" class="btn" data-timer="switch">⇄ Switch side</button><button type="button" class="btn" data-timer="cancel">✕ Cancel</button></div>
         <button type="button" class="logbtn feed-c" data-timer="stop">■ Stop &amp; log feeding</button>
       </div>`
@@ -1575,41 +1571,29 @@ function renderPump(now) {
     ? `Today: ${fmtVol(td.breastMl, u)} breast milk + ${fmtVol(td.formulaMl, u)} formula ≈ <b>${fmtVol(td.total, u)} total</b>. She typically needs ${volRange(td.lo, td.hi, u)} a day` +
       (td.gap ? `, so about <b>${fmtVol(td.gap, u)} more</b> would close the gap.` : ' — that\'s covered.')
     : 'Log a feeding to see today\'s breakdown.';
-  // Daily pumping output: just what actually came out of the pump, no comparison to need.
+  // Daily pumping output: just what actually came out of the pump, no comparison to need. Nursing
+  // minutes that day ride along on the same row (not a separate chart) since they're what the
+  // pump's standing in for on days she nursed instead — easy to see both at a glance.
   const pumpRows = days.map(dt => {
     const t0 = dt.getTime(), t1 = t0 + 24 * H;
     const dayPumps = realPumps.filter(l => l.t >= t0 && l.t < t1);
-    return { dt, pumpedMl: dayPumps.reduce((a, l) => a + (l.amt || 0), 0), n: dayPumps.length };
+    const nurseMin = state.logs.filter(l => l.type === 'feed' && l.t >= t0 && l.t < t1).reduce((a, l) => {
+      const n = normFeed(l);
+      return a + (String(n.kind).split(',').includes('breast') && n.min ? n.min : 0);
+    }, 0);
+    return { dt, pumpedMl: dayPumps.reduce((a, l) => a + (l.amt || 0), 0), n: dayPumps.length, nurseMin };
   });
   const pumpScale = Math.max(1, ...pumpRows.map(r => r.pumpedMl));
   $('#pumpOutBars').innerHTML = pumpRows.map(r => {
     const fillW = Math.min(100, r.pumpedMl / pumpScale * 100);
     return `<div class="row"><span>${r.dt.toLocaleDateString([], { weekday: 'short', day: 'numeric' })}</span>
       <span class="track" role="img" aria-label="${fmtVol(r.pumpedMl, u)} pumped"><i style="width:${fillW}%;background:var(--pump)"></i></span>
-      <span class="val">${r.pumpedMl ? fmtVol(r.pumpedMl, u) : '–'}${r.n ? ` · ${r.n} session${r.n === 1 ? '' : 's'}` : ''}</span></div>`;
+      <span class="val">${r.pumpedMl ? fmtVol(r.pumpedMl, u) : '–'}${r.n ? ` · ${r.n} session${r.n === 1 ? '' : 's'}` : ''}${r.nurseMin ? ` · ${r.nurseMin} min nursed` : ''}</span></div>`;
   }).join('');
   const weekTotal = pumpRows.reduce((a, r) => a + r.pumpedMl, 0);
   $('#pumpOutNote').textContent = weekTotal
     ? `${fmtVol(weekTotal, u)} pumped over the last 7 days, averaging ${fmtVol(Math.round(weekTotal / 7), u)}/day.`
     : 'Log a pumping session to see daily output here.';
-  // Bottle-feeding time: minutes spent feeding through the nipple (formula or pumped milk by
-  // bottle), day by day — placed right next to pumping output so the two are easy to compare.
-  const bottleRows = days.map(dt => {
-    const t0 = dt.getTime(), t1 = t0 + 24 * H;
-    const dayBottles = state.logs.filter(l => l.type === 'feed' && l.t >= t0 && l.t < t1 && normFeed(l).bottleMin);
-    return { dt, min: dayBottles.reduce((a, l) => a + normFeed(l).bottleMin, 0), n: dayBottles.length };
-  });
-  const bottleScale = Math.max(1, ...bottleRows.map(r => r.min));
-  $('#bottleMinBars').innerHTML = bottleRows.map(r => {
-    const fillW = Math.min(100, r.min / bottleScale * 100);
-    return `<div class="row"><span>${r.dt.toLocaleDateString([], { weekday: 'short', day: 'numeric' })}</span>
-      <span class="track" role="img" aria-label="${r.min} minutes on the nipple"><i style="width:${fillW}%;background:var(--feed)"></i></span>
-      <span class="val">${r.min ? `${r.min} min` : '–'}${r.n ? ` · ${r.n} feed${r.n === 1 ? '' : 's'}` : ''}</span></div>`;
-  }).join('');
-  const bottleWeekTotal = bottleRows.reduce((a, r) => a + r.min, 0);
-  $('#bottleMinNote').textContent = bottleWeekTotal
-    ? `${bottleWeekTotal} min on the nipple over the last 7 days, averaging ${Math.round(bottleWeekTotal / 7)} min/day.`
-    : 'Log a bottle feed with its time on the nipple to see it here.';
 }
 
 // Tummy time / skin-to-skin: a shared-shape mini timer card per kind, each toward CARE_GOAL_MIN
