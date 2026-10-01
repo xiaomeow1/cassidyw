@@ -1004,13 +1004,18 @@ function renderTiles(now) {
   const bu = defaultUnit('feed'), feedsToday = recent.filter(l => l.type === 'feed');
   const estimates = feedsToday.map(estimatedFeedMl), counted = estimates.filter(x => x != null), unmeasured = feedsToday.length - counted.length;
   const totalMl = counted.reduce((a, x) => a + x, 0);
-  const amtLine = totalMl ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Amount logged: ${fmtVol(totalMl, bu)} across ${counted.length} feed${counted.length === 1 ? '' : 's'}${unmeasured ? ` (${unmeasured} more without an amount or duration)` : ''}.</div>` : '';
+  const nurseMin = feedsToday.reduce((a, l) => { const n = normFeed(l); return a + (String(n.kind).split(',').includes('breast') && n.min ? n.min : 0); }, 0);
+  const amtLine = totalMl ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Amount logged: ${fmtVol(totalMl, bu)} across ${counted.length} feed${counted.length === 1 ? '' : 's'}${nurseMin ? ` · ${nurseMin} min nursed` : ''}${unmeasured ? ` (${unmeasured} more without an amount or duration)` : ''}.</div>` : '';
   // Vitamin D is a once-a-day dose, so "given today" means the calendar day, not a rolling 24 h —
   // otherwise a dose given at 11pm would still read as "covered" at 10pm the next night.
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
   const vitD = state.logs.filter(l => l.type === 'note' && l.kind === 'vitaminD' && l.t >= todayStart.getTime()).sort((a, b) => b.t - a.t)[0];
   const vitDLine = `<div class="fine" style="grid-column:1/-1;margin:0 2px">💊 Vitamin D: ${vitD ? `✓ given at ${fmtT(vitD.t)}` : 'not given yet today'}</div>`;
-  const extra = amtLine + vitDLine + (spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${fmtVol(ml, defaultUnit('note'))} lost` : ''}</div>` : '');
+  // Same calendar-day convention as the Bonding timers card in Journal, so "today" means the same
+  // thing in both places — surfaced here too since it's checked alongside feeding, not just journaling.
+  const skinMin = state.logs.filter(l => l.type === 'care' && l.kind === 'skin' && l.t >= todayStart.getTime()).reduce((a, l) => a + (l.min || 0), 0);
+  const skinLine = `<div class="fine" style="grid-column:1/-1;margin:0 2px">🫶 Skin-to-skin: ${skinMin} of ${CARE_GOAL_MIN} min today</div>`;
+  const extra = amtLine + vitDLine + skinLine + (spits.length ? `<div class="fine" style="grid-column:1/-1;margin:0 2px">Spit-ups / vomits: ${spits.length}${ml ? ` · about ${fmtVol(ml, defaultUnit('note'))} lost` : ''}</div>` : '');
   $('#tiles').innerHTML = extra + tile('Feedings', feeds, '8–12', feeds >= 8);
   renderIntakeMeter(d, totalMl, bu, unmeasured);
 }
@@ -1531,7 +1536,8 @@ function renderPump(now) {
   $('#pumpTiles').innerHTML = tile('Feedings', feeds24.length, 'goal 8–12') + tile('Pump sessions', rec.length, 'goal about 8') + tile('Pumped', total ? round1(fromMl(total, u)) : 0, unitName(u));
   const breastN = feeds24.filter(l => { const s = feedView(l).src; return s === 'breast' || s === 'mixed'; }).length;
   const fedMl = feeds24.reduce((a, l) => a + (estimatedFeedMl(l) || 0), 0);
-  const lines = [`Feedings: ${feeds24.length} (${breastN} breast, ${feeds24.length - breastN} bottle).`, fedMl ? `Amount logged: ${fmtVol(fedMl, u)}.` : 'No amounts logged yet.'];
+  const fedNurseMin = feeds24.reduce((a, l) => { const n = normFeed(l); return a + (String(n.kind).split(',').includes('breast') && n.min ? n.min : 0); }, 0);
+  const lines = [`Feedings: ${feeds24.length} (${breastN} breast, ${feeds24.length - breastN} bottle).`, fedMl ? `Amount logged: ${fmtVol(fedMl, u)}${fedNurseMin ? ` · ${fedNurseMin} min nursed` : ''}.` : 'No amounts logged yet.'];
   // next feed and next pump, side by side
   const nx = (cls, label, list, iv) => {
     const last = list[list.length - 1];
